@@ -77,46 +77,12 @@ namespace PiGame.Input
                     nameof(bindingGroup));
             }
 
+            InputBinding mask = InputBinding.MaskByGroup(bindingGroup);
             foreach (InputActionMap actionMap in _actions.actionMaps)
-            {
                 foreach (InputAction action in actionMap.actions)
-                {
-                    for (int bindingIndex = 0;
-                         bindingIndex < action.bindings.Count;
-                         bindingIndex++)
-                    {
-                        InputBinding binding = action.bindings[bindingIndex];
-                        if (BelongsToGroup(binding.groups, bindingGroup))
-                        {
-                            action.RemoveBindingOverride(bindingIndex);
-                        }
-                    }
-                }
-            }
+                    action.RemoveBindingOverride(mask);
 
             Save();
-        }
-
-        private static bool BelongsToGroup(string groups, string expectedGroup)
-        {
-            if (string.IsNullOrWhiteSpace(groups))
-            {
-                return false;
-            }
-
-            string[] bindingGroups = groups.Split(';');
-            foreach (string bindingGroup in bindingGroups)
-            {
-                if (string.Equals(
-                        bindingGroup,
-                        expectedGroup,
-                        StringComparison.OrdinalIgnoreCase))
-                {
-                    return true;
-                }
-            }
-
-            return false;
         }
     }
 }

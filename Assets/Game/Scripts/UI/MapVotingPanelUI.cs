@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Text;
+using PiGame.Input;
 using PiGame.Lobby;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -34,10 +35,7 @@ namespace PiGame.UI
         [Header("Input icons")]
         [SerializeField] private Image _confirmLegendIcon;
         [SerializeField] private Image _backLegendIcon;
-        [SerializeField] private Sprite _keyboardConfirmSprite;
-        [SerializeField] private Sprite _keyboardBackSprite;
-        [SerializeField] private Sprite _gamepadConfirmSprite;
-        [SerializeField] private Sprite _gamepadBackSprite;
+        [SerializeField] private InputPromptCatalog _promptCatalog;
         [FormerlySerializedAs("_instructionText")]
         [SerializeField] private Text _confirmLegendText;
         [SerializeField] private Text _backLegendText;
@@ -55,6 +53,7 @@ namespace PiGame.UI
         public event Action BackRequested;
 
         private LobbyInputDeviceKind _lastInputDevice = LobbyInputDeviceKind.Keyboard;
+        private Gamepad _lastGamepad;
         private LobbyMapId _selectedMapId = LobbyMapId.Random;
         private LobbyStage _stage;
         private LobbyMapId _winningMap = LobbyMapId.None;
@@ -110,6 +109,12 @@ namespace PiGame.UI
 
         private void Update()
         {
+            if (_lastGamepad != Gamepad.current)
+            {
+                _lastGamepad = Gamepad.current;
+                RefreshLegend();
+            }
+
             LobbyInputDeviceKind detectedDevice = DetectRecentlyUsedDevice();
             if (detectedDevice != LobbyInputDeviceKind.Unknown)
             {
@@ -495,8 +500,10 @@ namespace PiGame.UI
         private void RefreshLegend()
         {
             bool usesGamepad = _lastInputDevice == LobbyInputDeviceKind.Gamepad;
-            _confirmLegendIcon.sprite = usesGamepad ? _gamepadConfirmSprite : _keyboardConfirmSprite;
-            _backLegendIcon.sprite = usesGamepad ? _gamepadBackSprite : _keyboardBackSprite;
+            _confirmLegendIcon.sprite = _promptCatalog.GetSprite(
+                usesGamepad ? "<Gamepad>/buttonSouth" : "<Keyboard>/enter");
+            _backLegendIcon.sprite = _promptCatalog.GetSprite(
+                usesGamepad ? "<Gamepad>/buttonEast" : "<Keyboard>/escape");
             _confirmLegendText.text = "CONFIRMAR VOTO";
             _backLegendText.text = "VOLTAR";
         }

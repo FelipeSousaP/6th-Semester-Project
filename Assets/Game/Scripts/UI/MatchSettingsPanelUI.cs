@@ -1,5 +1,6 @@
 using System;
 using PiGame.Lobby;
+using PiGame.Input;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
@@ -30,8 +31,7 @@ namespace PiGame.UI
 
         [Header("Settings shortcut")]
         [SerializeField] private Image _menuShortcutIcon;
-        [SerializeField] private Sprite _keyboardShortcutSprite;
-        [SerializeField] private Sprite _gamepadShortcutSprite;
+        [SerializeField] private InputPromptCatalog _promptCatalog;
 
         [Header("Selection visual")]
         [SerializeField] private Color _normalColor = new Color(0.82f, 0.76f, 0.88f, 1f);
@@ -62,7 +62,7 @@ namespace PiGame.UI
                 DefaultMode,
                 DefaultMinimumPlayers,
                 false);
-            _menuShortcutIcon.sprite = _keyboardShortcutSprite;
+            _menuShortcutIcon.sprite = _promptCatalog.GetSprite("<Keyboard>/tab");
             RefreshSelectionVisuals();
             RefreshSummary();
         }
@@ -106,12 +106,12 @@ namespace PiGame.UI
                         || Gamepad.current.dpad.IsPressed()
                         || Gamepad.current.leftStick.ReadValue().sqrMagnitude > 0.36f))
                 {
-                    _menuShortcutIcon.sprite = _gamepadShortcutSprite;
+                    _menuShortcutIcon.sprite = _promptCatalog.GetSprite("<Gamepad>/buttonNorth");
                 }
                 else if ((Keyboard.current != null && Keyboard.current.anyKey.wasPressedThisFrame)
                     || (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame))
                 {
-                    _menuShortcutIcon.sprite = _keyboardShortcutSprite;
+                    _menuShortcutIcon.sprite = _promptCatalog.GetSprite("<Keyboard>/tab");
                 }
             }
 
