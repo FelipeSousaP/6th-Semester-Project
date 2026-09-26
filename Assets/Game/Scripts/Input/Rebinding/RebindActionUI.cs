@@ -241,38 +241,6 @@ namespace UnityEngine.InputSystem.Samples.RebindUI
         }
 
         /// <summary>
-        /// Finds another binding in this action map using the candidate control.
-        /// </summary>
-        public bool TryFindDuplicateBinding(
-            string candidatePath, out InputAction duplicateAction, out int duplicateBindingIndex)
-        {
-            duplicateAction = null;
-            duplicateBindingIndex = -1;
-
-            if (!ResolveActionAndBinding(out var targetAction, out var targetBindingIndex))
-                return false;
-
-            foreach (var action in targetAction.actionMap.actions)
-            {
-                for (var index = 0; index < action.bindings.Count; index++)
-                {
-                    var binding = action.bindings[index];
-                    if ((action == targetAction && index == targetBindingIndex) || binding.isComposite)
-                        continue;
-
-                    if (!string.Equals(binding.effectivePath, candidatePath, StringComparison.OrdinalIgnoreCase))
-                        continue;
-
-                    duplicateAction = action;
-                    duplicateBindingIndex = index;
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        /// <summary>
         /// Initiate an interactive rebind that lets the player actuate a control to choose a new binding
         /// for the action.
         /// </summary>

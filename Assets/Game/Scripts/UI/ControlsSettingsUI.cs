@@ -4,7 +4,6 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
-using UnityEngine.InputSystem.Controls;
 using UnityEngine.InputSystem.Samples.RebindUI;
 using UnityEngine.UI;
 
@@ -22,17 +21,13 @@ namespace PiGame.UI
         private InputActionAsset _actions;
         private InputBindingService _bindingService;
         private RebindActionUI[] _bindingRows;
-        private RebindActionUI _activeBinding;
-        private InputAction _conflictAction;
-        private int _conflictIndex = -1;
-        private string _candidatePath;
+        private readonly ControlsRebindSession _rebind = new ControlsRebindSession();
         private bool _initialized;
         private int _lastRebindFinishedFrame = -1;
-        private int _rebindStartedFrame = -1;
         private Gamepad _lastDisplayedGamepad;
 
         public bool IsVisible => enabled && _root.activeSelf;
-        public bool BlocksBackShortcut => _activeBinding?.ongoingRebind != null
+        public bool BlocksBackShortcut => _rebind.IsCapturing
             || _lastRebindFinishedFrame == Time.frameCount;
 
         public event Action Closed;
@@ -87,7 +82,7 @@ namespace PiGame.UI
 
         public void Hide(bool notify = true)
         {
-            _activeBinding?.ongoingRebind?.Cancel();
+            _rebind.CancelCapture();
             if (_conflictPanel.gameObject.activeSelf)
                 CancelConflict();
             else
@@ -108,9 +103,9 @@ namespace PiGame.UI
                 return true;
             }
 
-            if (_activeBinding?.ongoingRebind != null)
+            if (_rebind.IsCapturing)
             {
-                _activeBinding.ongoingRebind.Cancel();
+                _rebind.CancelCapture();
                 return true;
             }
 
@@ -126,16 +121,7 @@ namespace PiGame.UI
                 RefreshBindings();
             }
 
-            if (_activeBinding?.ongoingRebind == null || Time.frameCount == _rebindStartedFrame)
-                return;
-
-            bool oppositeDevicePressed = IsGamepadBinding(_activeBinding)
-                ? (Keyboard.current != null && Keyboard.current.anyKey.wasPressedThisFrame)
-                    || WasAnyButtonPressed(Mouse.current)
-                : WasAnyButtonPressed(Gamepad.current);
-
-            if (oppositeDevicePressed)
-                _activeBinding.ongoingRebind.Cancel();
+            _rebind.CancelIfOtherDevicePressed();
         }
 
         private void OnDestroy()
@@ -182,30 +168,9 @@ namespace PiGame.UI
             RebindActionUI bindingRow,
             InputActionRebindingExtensions.RebindingOperation operation)
         {
-            if (!bindingRow.ResolveActionAndBinding(out InputAction action, out int index))
-            {
-                operation.Cancel();
-                return;
-            }
-
-            _activeBinding = bindingRow;
-            _rebindStartedFrame = Time.frameCount;
-            ConfigureOperation(operation, action.bindings[index]);
-            operation.OnApplyBinding((_, path) => ApplyOrDeferBinding(bindingRow, action, index, path));
+            _rebind.Start(bindingRow, operation);
             SetBindingButtonsInteractable(false);
             SetBindingLabel(bindingRow, "PRESSIONE...", false);
-        }
-
-        private void ApplyOrDeferBinding(
-            RebindActionUI bindingRow, InputAction action, int index, string path)
-        {
-            if (!bindingRow.TryFindDuplicateBinding(path, out _conflictAction, out _conflictIndex))
-            {
-                action.ApplyBindingOverride(index, path);
-                return;
-            }
-
-            _candidatePath = path;
         }
 
         private void HandleRebindStopped(
@@ -219,7 +184,7 @@ namespace PiGame.UI
                 return;
             }
 
-            if (_conflictAction == null)
+            if (!_rebind.HasConflict)
             {
                 _bindingService.Save();
                 FinishRebind();
@@ -231,10 +196,7 @@ namespace PiGame.UI
 
         private void ConfirmConflict()
         {
-            _activeBinding.ResolveActionAndBinding(out InputAction action, out int index);
-            string originalPath = action.bindings[index].effectivePath;
-            action.ApplyBindingOverride(index, _candidatePath);
-            _conflictAction.ApplyBindingOverride(_conflictIndex, originalPath);
+            _rebind.AcceptConflict();
             _bindingService.Save();
             _conflictPanel.Hide();
             FinishRebind();
@@ -248,48 +210,11 @@ namespace PiGame.UI
 
         private void FinishRebind()
         {
-            RebindActionUI selection = _activeBinding;
-            _activeBinding = null;
-            _rebindStartedFrame = -1;
-            _conflictAction = null;
-            _conflictIndex = -1;
-            _candidatePath = null;
+            RebindActionUI selection = _rebind.Finish();
             SetBindingButtonsInteractable(true);
             RefreshBindings();
             if (selection != null && IsVisible)
                 EventSystem.current?.SetSelectedGameObject(selection.gameObject);
-        }
-
-        private static void ConfigureOperation(
-            InputActionRebindingExtensions.RebindingOperation operation,
-            InputBinding binding)
-        {
-            if (IsGamepadBinding(binding))
-            {
-                operation.WithControlsHavingToMatchPath("<Gamepad>")
-                    .WithCancelingThrough("<Keyboard>/escape");
-                return;
-            }
-
-            operation.WithControlsExcluding("<Gamepad>")
-                .WithControlsExcluding("<Joystick>")
-                .WithControlsExcluding("<Touchscreen>")
-                .WithControlsExcluding("<Keyboard>/escape")
-                .WithCancelingThrough("<Keyboard>/escape");
-        }
-
-        private static bool WasAnyButtonPressed(InputDevice device)
-        {
-            if (device == null)
-                return false;
-
-            foreach (InputControl control in device.allControls)
-            {
-                if (control is ButtonControl button && button.wasPressedThisFrame)
-                    return true;
-            }
-
-            return false;
         }
 
         private bool ValidateSceneReferences()
@@ -356,14 +281,5 @@ namespace PiGame.UI
             foreach (RebindActionUI bindingRow in _bindingRows)
                 bindingRow.GetComponent<Button>().interactable = interactable;
         }
-
-        private static bool IsGamepadBinding(RebindActionUI bindingRow)
-        {
-            return bindingRow.ResolveActionAndBinding(out InputAction action, out int index)
-                && IsGamepadBinding(action.bindings[index]);
-        }
-
-        private static bool IsGamepadBinding(InputBinding binding) =>
-            binding.groups?.IndexOf("Gamepad", StringComparison.OrdinalIgnoreCase) >= 0;
     }
 }
