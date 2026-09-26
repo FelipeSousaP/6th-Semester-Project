@@ -53,6 +53,7 @@ namespace PiGame.Gameplay
         private int _wallDirection;
         private float _wallJumpControlTimer ;
         private bool _isGameplayInputBlocked;
+        private bool _waitForJumpRelease;
         private InputActionMap _playerActions;
 
         public bool IsCrouching => _isCrouching;
@@ -85,6 +86,7 @@ namespace PiGame.Gameplay
             if(!IsOwner)
                 return;
             _isGameplayInputBlocked = false;
+            _waitForJumpRelease = false;
             ResetCrouch();
             _playerActions?.Disable();
         }
@@ -130,6 +132,9 @@ namespace PiGame.Gameplay
             }
 
             _isGameplayInputBlocked = isBlocked;
+            if (isBlocked)
+                _waitForJumpRelease = true;
+
             if (isBlocked && _rigidbody != null)
             {
                 ResetCrouch();
@@ -162,6 +167,13 @@ namespace PiGame.Gameplay
 
         private void HandleJump()
         {
+            if (_waitForJumpRelease)
+            {
+                if (!_jumpAction.action.IsPressed())
+                    _waitForJumpRelease = false;
+                return;
+            }
+
             if(_isCrouching || !_jumpAction.action.WasPressedThisFrame())
                 return;
 
