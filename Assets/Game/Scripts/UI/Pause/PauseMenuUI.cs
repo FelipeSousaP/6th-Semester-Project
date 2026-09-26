@@ -48,6 +48,7 @@ namespace PiGame.UI
                 return;
             }
 
+            ConfigureConfirmationNavigation();
             BindButtons();
         }
 
@@ -133,6 +134,7 @@ namespace PiGame.UI
 
         public void ShowConfirmation()
         {
+            _actionsRoot.SetActive(false);
             _confirmationRoot.SetActive(true);
             QueueSelection(_cancelExitButton);
         }
@@ -140,6 +142,7 @@ namespace PiGame.UI
         public void HideConfirmation()
         {
             _confirmationRoot.SetActive(false);
+            _actionsRoot.SetActive(true);
             if (IsVisible)
             {
                 QueueSelection(_resumeButton);
@@ -208,6 +211,20 @@ namespace PiGame.UI
         private void ConfigureActions(bool showControls)
         {
             _controlsButton.gameObject.SetActive(showControls);
+        }
+
+        private void ConfigureConfirmationNavigation()
+        {
+            _confirmExitButton.navigation = new Navigation
+            {
+                mode = Navigation.Mode.Explicit,
+                selectOnRight = _cancelExitButton
+            };
+            _cancelExitButton.navigation = new Navigation
+            {
+                mode = Navigation.Mode.Explicit,
+                selectOnLeft = _confirmExitButton
+            };
         }
 
         private void ConfigureControlsView(InputActionAsset actions)
