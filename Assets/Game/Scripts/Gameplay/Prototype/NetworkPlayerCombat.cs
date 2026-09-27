@@ -15,6 +15,7 @@ namespace PiGame.Gameplay
         [SerializeField] private InputActionReference _abilityAction;
         [SerializeField] private SpriteRenderer _aimIndicator;
         [SerializeField] private float _aimIndicatorDistance = 1.15f;
+        [SerializeField] private bool _preventAbilityOnWallOrWallJump;
 
         private NetworkPlayerState _playerState;
         private PlayerMove _playerMove;
@@ -55,10 +56,13 @@ namespace PiGame.Gameplay
                     return;
                 }
             }
+
+            _playerState.StateChanged += RefreshAimIndicator;
         }
 
         public override void OnNetworkDespawn()
         {
+            _playerState.StateChanged -= RefreshAimIndicator;
             _isGameplayInputBlocked = false;
             _waitForAimRelease = false;
             _waitForAbilityRelease = false;
@@ -181,7 +185,11 @@ namespace PiGame.Gameplay
             Vector2 moveDirection = _playerMove.ReadMovementDirection();
             if (abilityPressed)
             {
-                BeginAbilityRpc(_aimDirection, moveDirection);
+                if (!_preventAbilityOnWallOrWallJump
+                    || _playerMove.CanBeginWallRestrictedAbility())
+                {
+                    BeginAbilityRpc(_aimDirection, moveDirection);
+                }
             }
             else
             {

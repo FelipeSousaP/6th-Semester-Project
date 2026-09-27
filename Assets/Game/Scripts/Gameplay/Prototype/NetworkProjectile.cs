@@ -83,6 +83,11 @@ namespace PiGame.Gameplay
                     return;
                 }
 
+                if (playerState.IsInvulnerable)
+                {
+                    return;
+                }
+
                 playerState.ApplyDamageServer(_damage, _shooterClientId);
             }
 

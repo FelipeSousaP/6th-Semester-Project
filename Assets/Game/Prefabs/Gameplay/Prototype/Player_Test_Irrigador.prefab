@@ -112,7 +112,7 @@ GameObject:
   - component: {fileID: -8019238897005916214}
   - component: {fileID: 750885784796070611}
   - component: {fileID: 381949192463674323}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Player_Test_Irrigador
   m_TagString: Untagged
   m_Icon: {fileID: 0}
