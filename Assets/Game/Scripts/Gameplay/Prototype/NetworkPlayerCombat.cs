@@ -43,6 +43,7 @@ namespace PiGame.Gameplay
                 return;
             }
 
+            _aimIndicator.gameObject.SetActive(IsOwner);
             _aimIndicator.enabled = false;
             if (IsOwner)
             {
@@ -64,6 +65,7 @@ namespace PiGame.Gameplay
             if (_aimIndicator != null)
             {
                 _aimIndicator.enabled = false;
+                _aimIndicator.gameObject.SetActive(false);
             }
         }
 
