@@ -5,9 +5,13 @@ using UnityEngine.InputSystem;
 
 namespace PiGame.Gameplay
 {
-    [RequireComponent(typeof(NetworkPlayerState))]
+    [RequireComponent(typeof(NetworkPlayerState), typeof(PlayerMove))]
     public class NetworkPlayerCombat : NetworkBehaviour, IGameplayInputBlocker
     {
+        [SerializeField] private InputActionReference _aimDirectionAction;
+        [SerializeField] private InputActionReference _aimPointerAction;
+        [SerializeField] private InputActionReference _aimFireAction;
+        [SerializeField] private InputActionReference _cancelAimAction;
         [SerializeField] private NetworkProjectile _projectilePrefab;
         [SerializeField] private float _shotCooldownSeconds = 0.35f;
         [SerializeField] private float _projectileSpawnDistance = 0.85f;
@@ -27,6 +31,7 @@ namespace PiGame.Gameplay
         private NetworkPlayerState _playerState;
         private LineRenderer _aimLine;
         private bool _localAimHeld;
+        private bool _waitForAimRelease;
         private bool _isGameplayInputBlocked;
         private float _nextServerShotTime;
 
@@ -38,6 +43,14 @@ namespace PiGame.Gameplay
 
         public override void OnNetworkSpawn()
         {
+            if (IsOwner)
+            {
+                if (!ConfigureInput())
+                {
+                    enabled = false;
+                }
+            }
+
             _aimDirection.OnValueChanged += HandleAimChanged;
             _isAiming.OnValueChanged += HandleAimingChanged;
             RefreshAimLine();
@@ -46,6 +59,7 @@ namespace PiGame.Gameplay
         public override void OnNetworkDespawn()
         {
             _isGameplayInputBlocked = false;
+            _waitForAimRelease = false;
             _aimDirection.OnValueChanged -= HandleAimChanged;
             _isAiming.OnValueChanged -= HandleAimingChanged;
         }
@@ -59,15 +73,27 @@ namespace PiGame.Gameplay
 
             if (_isGameplayInputBlocked)
             {
+                _waitForAimRelease = true;
                 CancelLocalAim();
                 return;
             }
 
             if (!_playerState.CanAct)
             {
-                _localAimHeld = false;
-                _isAiming.Value = false;
+                _waitForAimRelease = true;
+                CancelLocalAim();
                 return;
+            }
+
+            bool aimPressed = ReadAimPressed();
+            if (_waitForAimRelease)
+            {
+                if (aimPressed)
+                {
+                    return;
+                }
+
+                _waitForAimRelease = false;
             }
 
             Vector2 aim = ReadAimDirection();
@@ -76,13 +102,12 @@ namespace PiGame.Gameplay
                 _aimDirection.Value = aim.normalized;
             }
 
-            bool aimPressed = ReadAimPressed();
             bool cancelPressed = ReadCancelPressed();
 
             if (cancelPressed && _localAimHeld)
             {
-                _localAimHeld = false;
-                _isAiming.Value = false;
+                _waitForAimRelease = true;
+                CancelLocalAim();
                 return;
             }
 
@@ -113,6 +138,7 @@ namespace PiGame.Gameplay
             _isGameplayInputBlocked = isBlocked;
             if (isBlocked)
             {
+                _waitForAimRelease = true;
                 CancelLocalAim();
             }
         }
@@ -156,16 +182,15 @@ namespace PiGame.Gameplay
 
         private Vector2 ReadAimDirection()
         {
-            if (_playerState.InputDevice == LobbyInputDeviceKind.Gamepad
-                && Gamepad.current != null)
+            if (_playerState.InputDevice == LobbyInputDeviceKind.Gamepad)
             {
-                return Gamepad.current.rightStick.ReadValue();
+                return _aimDirectionAction.action.ReadValue<Vector2>();
             }
 
-            if (Mouse.current != null && Camera.main != null)
+            if (Camera.main != null)
             {
-                Vector2 mousePosition = Mouse.current.position.ReadValue();
-                Vector3 mouseWorld = Camera.main.ScreenToWorldPoint(mousePosition);
+                Vector3 mouseWorld = Camera.main.ScreenToWorldPoint(
+                    _aimPointerAction.action.ReadValue<Vector2>());
                 return mouseWorld - transform.position;
             }
 
@@ -174,26 +199,31 @@ namespace PiGame.Gameplay
 
         private bool ReadAimPressed()
         {
-            if (_playerState.InputDevice == LobbyInputDeviceKind.Gamepad
-                && Gamepad.current != null)
-            {
-                return Gamepad.current.leftTrigger.isPressed;
-            }
-
-            return Mouse.current != null && Mouse.current.leftButton.isPressed;
+            return _aimFireAction.action.IsPressed();
         }
 
         private bool ReadCancelPressed()
         {
-            if (_playerState.InputDevice == LobbyInputDeviceKind.Gamepad
-                && Gamepad.current != null)
+            return _cancelAimAction.action.WasPressedThisFrame();
+        }
+
+        private bool ConfigureInput()
+        {
+            InputAction aimDirection = _aimDirectionAction != null ? _aimDirectionAction.action : null;
+            InputAction aimPointer = _aimPointerAction != null ? _aimPointerAction.action : null;
+            InputAction aimFire = _aimFireAction != null ? _aimFireAction.action : null;
+            InputAction cancelAim = _cancelAimAction != null ? _cancelAimAction.action : null;
+            if (aimDirection == null || aimPointer == null || aimFire == null || cancelAim == null
+                || aimDirection.actionMap == null
+                || aimDirection.actionMap != aimPointer.actionMap
+                || aimDirection.actionMap != aimFire.actionMap
+                || aimDirection.actionMap != cancelAim.actionMap)
             {
-                return Gamepad.current.leftShoulder.wasPressedThisFrame;
+                Debug.LogError("Configure AimDirection, AimPointer, AimFire e CancelAim do mesmo Action Map no NetworkPlayerCombat.", this);
+                return false;
             }
 
-            return Keyboard.current != null
-                && (Keyboard.current.leftShiftKey.wasPressedThisFrame
-                    || Keyboard.current.rightShiftKey.wasPressedThisFrame);
+            return true;
         }
 
         private void CreateAimLine()

@@ -147,7 +147,8 @@ namespace PiGame.Lobby
                 votes,
                 _lobbyStateContract.LocalClientId,
                 _lobbyStateContract.Stage,
-                _lobbyStateContract.WinningMap);
+                _lobbyStateContract.WinningMap,
+                _lobbyStateContract.IsRandomMapResult);
         }
 
         private void SetVisible(bool isVisible)

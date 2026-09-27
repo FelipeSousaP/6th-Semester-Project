@@ -3,47 +3,27 @@ using UnityEngine.InputSystem;
 
 namespace PiGame.UI
 {
-    public class DisplayModeController : MonoBehaviour
+    public static class DisplayModeController
     {
         private const int DefaultWindowWidth = 960;
         private const int DefaultWindowHeight = 540;
 
-        private static DisplayModeController _instance;
-
-        private Vector2Int _windowedResolution =
+        private static Vector2Int _windowedResolution =
             new Vector2Int(DefaultWindowWidth, DefaultWindowHeight);
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Initialize()
         {
-            if (_instance != null)
-            {
-                return;
-            }
-
-            GameObject controllerObject = new GameObject(nameof(DisplayModeController));
-            _instance = controllerObject.AddComponent<DisplayModeController>();
-            DontDestroyOnLoad(controllerObject);
-        }
-
-        private void Awake()
-        {
-            if (_instance != null && _instance != this)
-            {
-                Destroy(gameObject);
-                return;
-            }
-
-            _instance = this;
-            DontDestroyOnLoad(gameObject);
-
             if (Screen.fullScreenMode == FullScreenMode.Windowed)
             {
                 _windowedResolution = new Vector2Int(Screen.width, Screen.height);
             }
+
+            InputSystem.onAfterUpdate -= HandleInputAfterUpdate;
+            InputSystem.onAfterUpdate += HandleInputAfterUpdate;
         }
 
-        private void Update()
+        private static void HandleInputAfterUpdate()
         {
             Keyboard keyboard = Keyboard.current;
             if (keyboard == null)
@@ -61,7 +41,7 @@ namespace PiGame.UI
             }
         }
 
-        public void ToggleFullscreen()
+        public static void ToggleFullscreen()
         {
             if (Screen.fullScreenMode == FullScreenMode.Windowed)
             {

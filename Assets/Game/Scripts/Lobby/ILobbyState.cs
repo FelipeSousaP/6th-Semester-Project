@@ -9,23 +9,17 @@ namespace PiGame.Lobby
         event Action StageChanged;
         event Action MapVotesChanged;
         event Action MatchSettingsChanged;
-        event Action<LobbyMapId> MatchStartRequested;
 
         int PlayerCount { get; }
         int MapVoteCount { get; }
         ulong LocalClientId { get; }
         LobbyStage Stage { get; }
         LobbyMapId WinningMap { get; }
+        bool IsRandomMapResult { get; }
         LobbyMatchSettingsData MatchSettings { get; }
-        int MatchDurationMinutes { get; }
-        LobbyMatchMode MatchMode { get; }
-        int MinimumPlayers { get; }
         int SelectableCharacterCount { get; }
         bool RequireUniqueCharacters { get; }
         bool LocalClientIsHost { get; }
-        bool AllPlayersReady { get; }
-        bool CanStartMatch { get; }
-        bool AllMapVotesConfirmed { get; }
 
         LobbyPlayerData GetPlayer(int index);
         LobbyMapVoteData GetMapVote(int index);

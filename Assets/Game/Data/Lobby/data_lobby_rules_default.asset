@@ -11,12 +11,10 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b0400000000000000000000000000018, type: 3}
   m_Name: data_lobby_rules_default
-  m_EditorClassIdentifier:
-  _minimumPlayers: 2
+  m_EditorClassIdentifier: 
+  _minimumPlayers: 1
   _maximumPlayers: 4
   _requireUniqueCharacters: 0
-  _availableCharacters:
-  - 0
-  - 1
+  _availableCharacters: 0000000001000000
   _defaultDurationMinutes: 3
   _defaultMatchMode: 1

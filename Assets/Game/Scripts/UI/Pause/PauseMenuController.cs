@@ -11,30 +11,18 @@ namespace PiGame.UI
         [SerializeField] private PauseMenuDefinition _definition;
 
         private IPauseContext _context;
-        private PauseInputDevice _currentDevice = PauseInputDevice.KeyboardMouse;
         private bool _isOpen;
         private bool _isExiting;
 
         private void Awake()
         {
-            _view ??= GetComponent<PauseMenuUI>();
-            _contextSource ??= GetComponent<MonoBehaviour>();
             _context = _contextSource as IPauseContext;
 
-            if (_context == null)
+            if (_view == null || _context == null || _definition == null)
             {
-                foreach (MonoBehaviour behaviour in GetComponents<MonoBehaviour>())
-                {
-                    if (behaviour is IPauseContext pauseContext)
-                    {
-                        _context = pauseContext;
-                        _contextSource = behaviour;
-                        break;
-                    }
-                }
+                Debug.LogError("PauseMenuController precisa de View, Context e Definition no Inspector.", this);
+                enabled = false;
             }
-
-            _view?.Initialize(_definition);
         }
 
         private void OnEnable()
@@ -52,14 +40,12 @@ namespace PiGame.UI
 
         private void Start()
         {
-            if (_view == null || _context == null || _definition == null)
+            if (!_view.Initialize(_definition))
             {
-                Debug.LogError("PauseMenuController não está configurado corretamente.", this);
                 enabled = false;
                 return;
             }
 
-            _view.Initialize(_definition);
             _view.SetVisible(false);
         }
 
@@ -75,7 +61,7 @@ namespace PiGame.UI
 
             if (_isOpen && !_isExiting)
             {
-                _context?.ExitPause();
+                _context.ExitPause();
             }
 
             _isOpen = false;
@@ -90,14 +76,12 @@ namespace PiGame.UI
 
             if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
             {
-                SetInputDevice(PauseInputDevice.KeyboardMouse);
                 HandleBackOrToggle();
                 return;
             }
 
             if (Gamepad.current != null && Gamepad.current.startButton.wasPressedThisFrame)
             {
-                SetInputDevice(PauseInputDevice.Gamepad);
                 HandleBackOrToggle();
                 return;
             }
@@ -107,11 +91,16 @@ namespace PiGame.UI
                 return;
             }
 
-            RefreshInputDevice();
-
             if (Gamepad.current != null && Gamepad.current.buttonEast.wasPressedThisFrame)
             {
-                if (_view.IsConfirmationVisible)
+                if (_view.IsControlsVisible)
+                {
+                    if (!_view.BlocksControlsBackShortcut)
+                    {
+                        _view.HandleControlsBack();
+                    }
+                }
+                else if (_view.IsConfirmationVisible)
                 {
                     HideExitConfirmation();
                 }
@@ -136,19 +125,27 @@ namespace PiGame.UI
                 return;
             }
 
+            if (_view.IsControlsVisible)
+            {
+                if (!_view.BlocksControlsBackShortcut)
+                {
+                    _view.HandleControlsBack();
+                }
+                return;
+            }
+
             ClosePause();
         }
 
         private void OpenPause()
         {
-            if (_isOpen || _context == null || !_context.CanOpenPause)
+            if (_isOpen || !_context.CanOpenPause)
             {
                 return;
             }
 
             _isOpen = true;
             _context.EnterPause();
-            _view.SetInputDevice(_currentDevice);
             _view.SetVisible(true);
         }
 
@@ -182,7 +179,7 @@ namespace PiGame.UI
 
         private async void HandleExitConfirmed()
         {
-            if (!_isOpen || _isExiting || _context == null)
+            if (!_isOpen || _isExiting)
             {
                 return;
             }
@@ -201,70 +198,6 @@ namespace PiGame.UI
                 _view.SetBusy(false);
                 _view.HideConfirmation();
             }
-        }
-
-        private void RefreshInputDevice()
-        {
-            if (WasGamepadUsed())
-            {
-                SetInputDevice(PauseInputDevice.Gamepad);
-                return;
-            }
-
-            if (WasKeyboardOrMouseUsed())
-            {
-                SetInputDevice(PauseInputDevice.KeyboardMouse);
-            }
-        }
-
-        private void SetInputDevice(PauseInputDevice device)
-        {
-            if (_currentDevice == device)
-            {
-                return;
-            }
-
-            _currentDevice = device;
-            if (_isOpen)
-            {
-                _view.SetInputDevice(device);
-            }
-        }
-
-        private static bool WasKeyboardOrMouseUsed()
-        {
-            bool keyboardUsed = Keyboard.current != null
-                && Keyboard.current.anyKey.wasPressedThisFrame;
-            if (keyboardUsed || Mouse.current == null)
-            {
-                return keyboardUsed;
-            }
-
-            return Mouse.current.leftButton.wasPressedThisFrame
-                || Mouse.current.rightButton.wasPressedThisFrame
-                || Mouse.current.middleButton.wasPressedThisFrame
-                || Mouse.current.delta.ReadValue().sqrMagnitude > 0.5f;
-        }
-
-        private static bool WasGamepadUsed()
-        {
-            Gamepad gamepad = Gamepad.current;
-            if (gamepad == null)
-            {
-                return false;
-            }
-
-            return gamepad.buttonSouth.wasPressedThisFrame
-                || gamepad.buttonNorth.wasPressedThisFrame
-                || gamepad.buttonWest.wasPressedThisFrame
-                || gamepad.buttonEast.wasPressedThisFrame
-                || gamepad.leftShoulder.wasPressedThisFrame
-                || gamepad.rightShoulder.wasPressedThisFrame
-                || gamepad.dpad.IsPressed()
-                || gamepad.leftStick.ReadValue().sqrMagnitude > 0.25f
-                || gamepad.rightStick.ReadValue().sqrMagnitude > 0.25f
-                || gamepad.leftTrigger.ReadValue() > 0.25f
-                || gamepad.rightTrigger.ReadValue() > 0.25f;
         }
     }
 }

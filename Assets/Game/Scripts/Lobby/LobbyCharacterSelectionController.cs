@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using PiGame.UI;
 using UnityEngine;
@@ -9,8 +8,6 @@ namespace PiGame.Lobby
     {
         [SerializeField] private CharacterSelectionPanelUI _view;
         [SerializeField] private NetworkLobbyState _lobbyState;
-
-        public event Action DisconnectRequested;
 
         private ILobbyState _lobbyStateContract;
 
@@ -105,12 +102,16 @@ namespace PiGame.Lobby
         private void HandleBackRequested()
         {
             if (_lobbyStateContract == null
-                || _lobbyStateContract.Stage != LobbyStage.CharacterSelection)
+                || _lobbyStateContract.Stage != LobbyStage.CharacterSelection
+                || !_lobbyStateContract.TryGetPlayer(
+                    _lobbyStateContract.LocalClientId,
+                    out LobbyPlayerData player)
+                || !player.IsReady)
             {
                 return;
             }
 
-            DisconnectRequested?.Invoke();
+            _lobbyStateContract.RequestReadyState(false);
         }
 
         private LobbyCharacterId FindNextCharacter(LobbyPlayerData player, int direction)

@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Text;
+using PiGame.Input;
 using PiGame.Lobby;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -34,10 +35,7 @@ namespace PiGame.UI
         [Header("Input icons")]
         [SerializeField] private Image _confirmLegendIcon;
         [SerializeField] private Image _backLegendIcon;
-        [SerializeField] private Sprite _keyboardConfirmSprite;
-        [SerializeField] private Sprite _keyboardBackSprite;
-        [SerializeField] private Sprite _gamepadConfirmSprite;
-        [SerializeField] private Sprite _gamepadBackSprite;
+        [SerializeField] private InputPromptCatalog _promptCatalog;
         [FormerlySerializedAs("_instructionText")]
         [SerializeField] private Text _confirmLegendText;
         [SerializeField] private Text _backLegendText;
@@ -47,15 +45,22 @@ namespace PiGame.UI
         [SerializeField] private Color _selectedColor = new(0.98f, 0.72f, 0.18f, 1f);
         [SerializeField] private Color _winnerColor = new(0.3f, 0.9f, 0.5f, 1f);
         [SerializeField, Min(1f)] private float _selectedScale = 1.12f;
+        [SerializeField, Range(0f, 0.05f)] private float _selectedPulseAmount = 0.015f;
+        [SerializeField, Min(0.1f)] private float _selectedPulseSpeed = 2f;
 
         public event Action<LobbyMapId, LobbyInputDeviceKind> VoteRequested;
         public event Action<LobbyInputDeviceKind> ConfirmRequested;
         public event Action BackRequested;
 
         private LobbyInputDeviceKind _lastInputDevice = LobbyInputDeviceKind.Keyboard;
+        private Gamepad _lastGamepad;
         private LobbyMapId _selectedMapId = LobbyMapId.Random;
         private LobbyStage _stage;
         private LobbyMapId _winningMap = LobbyMapId.None;
+        private LobbyMapId _displayedResultMap = LobbyMapId.None;
+        private bool _isRandomMapResult;
+        private bool _isDrawingRandomMap;
+        private Coroutine _randomDrawRoutine;
         private bool _interactionEnabled = true;
         private bool _localVoteConfirmed;
         private int _heldNavigationDirection;
@@ -89,6 +94,7 @@ namespace PiGame.UI
 
         private void OnDisable()
         {
+            StopRandomDraw();
             for (int i = 0; i < _optionButtons.Length; i++)
             {
                 if (_optionButtonActions != null && i < _optionButtonActions.Length)
@@ -103,6 +109,12 @@ namespace PiGame.UI
 
         private void Update()
         {
+            if (_lastGamepad != Gamepad.current)
+            {
+                _lastGamepad = Gamepad.current;
+                RefreshLegend();
+            }
+
             LobbyInputDeviceKind detectedDevice = DetectRecentlyUsedDevice();
             if (detectedDevice != LobbyInputDeviceKind.Unknown)
             {
@@ -110,6 +122,7 @@ namespace PiGame.UI
             }
 
             ProcessNavigationInput();
+            AnimateSelectedCard();
         }
 
         public void OnSubmit(BaseEventData eventData)
@@ -128,6 +141,11 @@ namespace PiGame.UI
         public void OnCancel(BaseEventData eventData)
         {
             if (!_interactionEnabled || _stage != LobbyStage.MapVoting)
+            {
+                return;
+            }
+
+            if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
             {
                 return;
             }
@@ -154,11 +172,30 @@ namespace PiGame.UI
             IReadOnlyList<LobbyMapVoteData> votes,
             ulong localClientId,
             LobbyStage stage,
-            LobbyMapId winningMap)
+            LobbyMapId winningMap,
+            bool isRandomMapResult)
         {
+            bool startRandomDraw = stage == LobbyStage.MatchStarting
+                && isRandomMapResult
+                && (_stage != LobbyStage.MatchStarting
+                    || !_isRandomMapResult
+                    || _winningMap != winningMap);
+
             _stage = stage;
             _winningMap = winningMap;
+            _isRandomMapResult = isRandomMapResult;
             _localVoteConfirmed = false;
+
+            if (stage != LobbyStage.MatchStarting || !isRandomMapResult)
+            {
+                StopRandomDraw();
+            }
+            else if (startRandomDraw)
+            {
+                StopRandomDraw();
+                _isDrawingRandomMap = true;
+                _randomDrawRoutine = StartCoroutine(AnimateRandomDraw());
+            }
 
             if (TryFindVote(votes, localClientId, out LobbyMapVoteData localVote))
             {
@@ -315,7 +352,9 @@ namespace PiGame.UI
         {
             if (_stage == LobbyStage.MatchStarting)
             {
-                _statusText.text = $"MAPA ESCOLHIDO: {GetMapDisplayName(_winningMap)}\nINICIANDO PARTIDA...";
+                _statusText.text = _isDrawingRandomMap
+                    ? "SORTEANDO MAPA..."
+                    : $"MAPA ESCOLHIDO: {GetMapDisplayName(_winningMap)}\nINICIANDO PARTIDA...";
                 _statusText.color = _winnerColor;
                 return;
             }
@@ -336,7 +375,8 @@ namespace PiGame.UI
             for (int i = 0; i < _optionButtons.Length; i++)
             {
                 LobbyMapId optionMapId = GetOptionMapId(i);
-                bool isWinner = _stage == LobbyStage.MatchStarting && optionMapId == _winningMap;
+                bool isWinner = _stage == LobbyStage.MatchStarting
+                    && optionMapId == (_isDrawingRandomMap ? _displayedResultMap : _winningMap);
                 bool isSelected = _stage == LobbyStage.MapVoting && optionMapId == _selectedMapId;
                 Button button = _optionButtons[i];
 
@@ -350,6 +390,100 @@ namespace PiGame.UI
                     ? _winnerColor
                     : isSelected ? _selectedColor : _normalColor;
             }
+        }
+
+        private void AnimateSelectedCard()
+        {
+            float pulse = 1f
+                + Mathf.Sin(Time.unscaledTime * Mathf.PI * _selectedPulseSpeed)
+                    * _selectedPulseAmount;
+
+            for (int i = 0; i < _optionButtons.Length; i++)
+            {
+                LobbyMapId optionMapId = GetOptionMapId(i);
+                bool isWinner = _stage == LobbyStage.MatchStarting
+                    && optionMapId == (_isDrawingRandomMap ? _displayedResultMap : _winningMap);
+                bool isSelected = _stage == LobbyStage.MapVoting
+                    && optionMapId == _selectedMapId;
+                _optionButtons[i].transform.localScale = isSelected || isWinner
+                    ? Vector3.one * (_selectedScale * pulse)
+                    : Vector3.one;
+            }
+        }
+
+        private IEnumerator AnimateRandomDraw()
+        {
+            List<LobbyMapId> availableMaps = new();
+            for (int i = 1; i < _optionButtons.Length; i++)
+            {
+                LobbyMapId mapId = GetOptionMapId(i);
+                if (mapId != LobbyMapId.None)
+                {
+                    availableMaps.Add(mapId);
+                }
+            }
+
+            int winningIndex = availableMaps.IndexOf(_winningMap);
+            if (winningIndex < 0)
+            {
+                Debug.LogError($"O mapa sorteado {_winningMap} não está nos cards da votação.", this);
+                yield return null;
+            }
+            else if (availableMaps.Count > 1)
+            {
+                int currentIndex = 0;
+                int steps = availableMaps.Count * 2 + winningIndex;
+                float totalWeight = 0f;
+                for (int step = 1; step <= steps; step++)
+                {
+                    float progress = (float)(step - 1) / (steps - 1);
+                    totalWeight += 1f + 2f * progress * progress;
+                }
+
+                _displayedResultMap = availableMaps[currentIndex];
+                RefreshSelectionVisuals();
+
+                float drawDuration = NetworkLobbyState.RandomMapDrawSeconds * 0.8f;
+                float nextStepTime = Time.realtimeSinceStartup;
+                for (int step = 1; step <= steps; step++)
+                {
+                    float progress = (float)(step - 1) / (steps - 1);
+                    float weight = 1f + 2f * progress * progress;
+                    nextStepTime += drawDuration * weight / totalWeight;
+                    while (Time.realtimeSinceStartup < nextStepTime)
+                    {
+                        yield return null;
+                    }
+
+                    currentIndex = (currentIndex + 1) % availableMaps.Count;
+                    _displayedResultMap = availableMaps[currentIndex];
+                    RefreshSelectionVisuals();
+                }
+            }
+            else
+            {
+                _displayedResultMap = _winningMap;
+                RefreshSelectionVisuals();
+                yield return null;
+            }
+
+            _displayedResultMap = _winningMap;
+            _isDrawingRandomMap = false;
+            _randomDrawRoutine = null;
+            RefreshStatus();
+            RefreshSelectionVisuals();
+        }
+
+        private void StopRandomDraw()
+        {
+            if (_randomDrawRoutine != null)
+            {
+                StopCoroutine(_randomDrawRoutine);
+                _randomDrawRoutine = null;
+            }
+
+            _isDrawingRandomMap = false;
+            _displayedResultMap = LobbyMapId.None;
         }
 
         private void SetLastInputDevice(LobbyInputDeviceKind inputDevice)
@@ -366,8 +500,10 @@ namespace PiGame.UI
         private void RefreshLegend()
         {
             bool usesGamepad = _lastInputDevice == LobbyInputDeviceKind.Gamepad;
-            _confirmLegendIcon.sprite = usesGamepad ? _gamepadConfirmSprite : _keyboardConfirmSprite;
-            _backLegendIcon.sprite = usesGamepad ? _gamepadBackSprite : _keyboardBackSprite;
+            _confirmLegendIcon.sprite = _promptCatalog.GetSprite(
+                usesGamepad ? "<Gamepad>/buttonSouth" : "<Keyboard>/enter");
+            _backLegendIcon.sprite = _promptCatalog.GetSprite(
+                usesGamepad ? "<Gamepad>/buttonEast" : "<Keyboard>/escape");
             _confirmLegendText.text = "CONFIRMAR VOTO";
             _backLegendText.text = "VOLTAR";
         }

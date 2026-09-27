@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -8,7 +9,7 @@ namespace PiGame.UI
 {
     public class ConfirmationPanelUI : MonoBehaviour, ICancelHandler
     {
-        [SerializeField] private Text _messageText;
+        [SerializeField] private TMP_Text _messageText;
         [SerializeField] private Button _confirmButton;
         [SerializeField] private Button _cancelButton;
 

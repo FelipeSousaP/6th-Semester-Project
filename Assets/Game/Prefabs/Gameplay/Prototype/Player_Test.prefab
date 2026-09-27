@@ -218,6 +218,9 @@ MonoBehaviour:
   _jumpForce: 12
   _moveAction: {fileID: -1680190386980627800, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
   _jumpAction: {fileID: -2099379676528639254, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
+  _crouchAction: {fileID: 7040659881675835329, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
+  _aimFireAction: {fileID: 1120369429361536294, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
+  _abilityAction: {fileID: -4061502912813408513, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
   _groundCheckDistance: 0.1
   _groundLayer:
     serializedVersion: 2
@@ -260,6 +263,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PiGame.Gameplay.NetworkPlayerCombat
   ShowTopMostFoldoutHeaderGroup: 1
+  _aimDirectionAction: {fileID: -5630151704836100654, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
+  _aimPointerAction: {fileID: -7727838429388660085, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
+  _aimFireAction: {fileID: 1120369429361536294, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
+  _cancelAimAction: {fileID: -7471211009204490832, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
   _projectilePrefab: {fileID: 900000000000000008, guid: e0400000000000000000000000000001, type: 3}
   _shotCooldownSeconds: 0.35
   _projectileSpawnDistance: 0.85

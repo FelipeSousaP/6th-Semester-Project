@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using PiGame.Gameplay;
+using PiGame.Input;
 using PiGame.Lobby;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -40,10 +41,7 @@ namespace PiGame.UI
         [SerializeField] private Sprite _gamepadDeviceSprite;
         [SerializeField] private Image _confirmLegendIcon;
         [SerializeField] private Image _backLegendIcon;
-        [SerializeField] private Sprite _keyboardConfirmSprite;
-        [SerializeField] private Sprite _keyboardBackSprite;
-        [SerializeField] private Sprite _gamepadConfirmSprite;
-        [SerializeField] private Sprite _gamepadBackSprite;
+        [SerializeField] private InputPromptCatalog _promptCatalog;
         [SerializeField] private Text _instructionText;
 
         public event Action<int, LobbyInputDeviceKind> BrowseRequested;
@@ -51,6 +49,7 @@ namespace PiGame.UI
         public event Action BackRequested;
 
         private LobbyInputDeviceKind _lastInputDevice = LobbyInputDeviceKind.Keyboard;
+        private Gamepad _lastGamepad;
         private bool _interactionEnabled = true;
         private int _localPlayerSlot = -1;
         private bool _localPlayerIsReady = true;
@@ -86,6 +85,12 @@ namespace PiGame.UI
 
         private void Update()
         {
+            if (_lastGamepad != Gamepad.current)
+            {
+                _lastGamepad = Gamepad.current;
+                RefreshLegend();
+            }
+
             LobbyInputDeviceKind detectedDevice = DetectRecentlyUsedDevice();
             if (detectedDevice != LobbyInputDeviceKind.Unknown)
             {
@@ -111,6 +116,11 @@ namespace PiGame.UI
         public void OnCancel(BaseEventData eventData)
         {
             if (!_interactionEnabled)
+            {
+                return;
+            }
+
+            if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
             {
                 return;
             }
@@ -548,12 +558,14 @@ namespace PiGame.UI
             bool usesGamepad = _lastInputDevice == LobbyInputDeviceKind.Gamepad;
             if (_confirmLegendIcon != null)
             {
-                _confirmLegendIcon.sprite = usesGamepad ? _gamepadConfirmSprite : _keyboardConfirmSprite;
+                _confirmLegendIcon.sprite = _promptCatalog.GetSprite(
+                    usesGamepad ? "<Gamepad>/buttonSouth" : "<Keyboard>/enter");
             }
 
             if (_backLegendIcon != null)
             {
-                _backLegendIcon.sprite = usesGamepad ? _gamepadBackSprite : _keyboardBackSprite;
+                _backLegendIcon.sprite = _promptCatalog.GetSprite(
+                    usesGamepad ? "<Gamepad>/buttonEast" : "<Keyboard>/escape");
             }
 
             if (_instructionText != null)

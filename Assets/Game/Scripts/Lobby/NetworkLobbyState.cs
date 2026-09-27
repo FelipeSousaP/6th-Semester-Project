@@ -8,16 +8,13 @@ namespace PiGame.Lobby
 {
     public class NetworkLobbyState : NetworkBehaviour, ILobbyState
     {
-        private static readonly LobbyMatchSettingsData FallbackMatchSettings = new(
+        public const float RandomMapDrawSeconds = 1.5f;
+
+        private static readonly LobbyMatchSettingsData InitialMatchSettings = new(
             3,
             LobbyMatchMode.Solo,
             2,
             false);
-        private static readonly LobbyCharacterId[] FallbackCharacters =
-        {
-            LobbyCharacterId.Cowboy,
-            LobbyCharacterId.Irrigator
-        };
 
         [SerializeField] private LobbyRulesDefinition _rules;
         [SerializeField] private LobbyMapDefinition[] _maps;
@@ -28,8 +25,9 @@ namespace PiGame.Lobby
         private readonly NetworkList<LobbyMapVoteData> _mapVotes = new();
         private readonly NetworkVariable<LobbyStage> _stage = new(LobbyStage.CharacterSelection);
         private readonly NetworkVariable<LobbyMapId> _winningMap = new(LobbyMapId.None);
+        private readonly NetworkVariable<bool> _isRandomMapResult = new(false);
         private readonly NetworkVariable<LobbyMatchSettingsData> _matchSettings =
-            new(FallbackMatchSettings);
+            new(InitialMatchSettings);
 
         private Coroutine _matchStartRoutine;
 
@@ -47,19 +45,16 @@ namespace PiGame.Lobby
             : ulong.MaxValue;
         public LobbyStage Stage => _stage.Value;
         public LobbyMapId WinningMap => _winningMap.Value;
+        public bool IsRandomMapResult => _isRandomMapResult.Value;
         public LobbyMatchSettingsData MatchSettings => _matchSettings.Value;
-        public int MatchDurationMinutes => MatchSettings.DurationMinutes;
-        public LobbyMatchMode MatchMode => MatchSettings.Mode;
-        public int MinimumPlayers => Mathf.Max(1, MatchSettings.MinimumPlayers);
-        public int SelectableCharacterCount => _rules != null
-            ? _rules.AvailableCharacterCount
-            : FallbackCharacters.Length;
+        private int MinimumPlayers => Mathf.Max(1, MatchSettings.MinimumPlayers);
+        public int SelectableCharacterCount => _rules.AvailableCharacterCount;
         public bool RequireUniqueCharacters => MatchSettings.RequireUniqueCharacters;
         public bool LocalClientIsHost => NetworkManager != null && NetworkManager.IsHost;
-        public bool CanStartMatch => _players.Count >= MinimumPlayers && AllPlayersReady;
+        private bool CanStartMatch => _players.Count >= MinimumPlayers && AllPlayersReady;
 
 
-        public bool AllMapVotesConfirmed
+        private bool AllMapVotesConfirmed
         {
             get
             {
@@ -80,7 +75,7 @@ namespace PiGame.Lobby
             }
         }
 
-        public bool AllPlayersReady
+        private bool AllPlayersReady
         {
             get
             {
@@ -102,12 +97,27 @@ namespace PiGame.Lobby
             }
         }
 
+        private void Awake()
+        {
+            if (_rules == null)
+            {
+                Debug.LogError("NetworkLobbyState precisa de LobbyRulesDefinition no Inspector.", this);
+                enabled = false;
+            }
+        }
+
         public override void OnNetworkSpawn()
         {
+            if (_rules == null)
+            {
+                return;
+            }
+
             _players.OnListChanged += HandlePlayersChanged;
             _mapVotes.OnListChanged += HandleMapVotesChanged;
             _stage.OnValueChanged += HandleStageChanged;
             _winningMap.OnValueChanged += HandleWinningMapChanged;
+            _isRandomMapResult.OnValueChanged += HandleRandomMapResultChanged;
             _matchSettings.OnValueChanged += HandleMatchSettingsChanged;
 
             if (IsServer)
@@ -115,6 +125,11 @@ namespace PiGame.Lobby
                 MatchSnapshot previousMatch = MatchSession.Instance != null
                     ? MatchSession.Instance.Snapshot
                     : null;
+
+                if (previousMatch == null)
+                {
+                    MatchSession.Instance?.ResetMapHistory();
+                }
 
                 ResetReplicatedSessionStateServer();
                 _matchSettings.Value = previousMatch != null
@@ -150,14 +165,21 @@ namespace PiGame.Lobby
             ResetReplicatedSessionStateServer();
             _matchSettings.Value = CreateInitialMatchSettings();
             MatchSession.Instance?.Clear();
+            MatchSession.Instance?.ResetMapHistory();
         }
 
         public override void OnNetworkDespawn()
         {
+            if (_rules == null)
+            {
+                return;
+            }
+
             _players.OnListChanged -= HandlePlayersChanged;
             _mapVotes.OnListChanged -= HandleMapVotesChanged;
             _stage.OnValueChanged -= HandleStageChanged;
             _winningMap.OnValueChanged -= HandleWinningMapChanged;
+            _isRandomMapResult.OnValueChanged -= HandleRandomMapResultChanged;
             _matchSettings.OnValueChanged -= HandleMatchSettingsChanged;
 
             StopMatchStartRoutine();
@@ -196,14 +218,7 @@ namespace PiGame.Lobby
 
         public LobbyCharacterId GetSelectableCharacter(int index)
         {
-            if (_rules != null)
-            {
-                return _rules.GetAvailableCharacter(index);
-            }
-
-            return index >= 0 && index < FallbackCharacters.Length
-                ? FallbackCharacters[index]
-                : LobbyCharacterId.None;
+            return _rules.GetAvailableCharacter(index);
         }
 
         public bool TryGetPlayer(ulong clientId, out LobbyPlayerData player)
@@ -544,6 +559,11 @@ namespace PiGame.Lobby
             StageChanged?.Invoke();
         }
 
+        private void HandleRandomMapResultChanged(bool previousValue, bool currentValue)
+        {
+            StageChanged?.Invoke();
+        }
+
         private void HandleMatchSettingsChanged(
             LobbyMatchSettingsData previousSettings,
             LobbyMatchSettingsData currentSettings)
@@ -555,22 +575,21 @@ namespace PiGame.Lobby
         {
             return durationMinutes >= 2
                 && durationMinutes <= 5
-                && (mode == LobbyMatchMode.Team || mode == LobbyMatchMode.Solo);
+                && mode == LobbyMatchMode.Solo;
         }
 
         private LobbyMatchSettingsData CreateInitialMatchSettings()
         {
-            if (_rules == null)
+            LobbyMatchMode initialMode = _rules.DefaultMatchMode;
+            if (initialMode == LobbyMatchMode.Team)
             {
-                Debug.LogWarning(
-                    "NetworkLobbyState has no LobbyRulesDefinition. Using fallback rules.",
-                    this);
-                return FallbackMatchSettings;
+                Debug.LogWarning("Modo Equipe indisponível por enquanto. Iniciando em Solo.", this);
+                initialMode = LobbyMatchMode.Solo;
             }
 
             return new LobbyMatchSettingsData(
                 Mathf.Clamp(_rules.DefaultDurationMinutes, 2, 5),
-                _rules.DefaultMatchMode,
+                initialMode,
                 Mathf.Clamp(_rules.MinimumPlayers, 1, _rules.MaximumPlayers),
                 _rules.RequireUniqueCharacters);
         }
@@ -675,9 +694,7 @@ namespace PiGame.Lobby
 
         private bool IsSlotAvailable(int playerSlot)
         {
-            int maximumPlayers = _rules != null
-                ? Mathf.Clamp(_rules.MaximumPlayers, 1, 4)
-                : 4;
+            int maximumPlayers = Mathf.Clamp(_rules.MaximumPlayers, 1, 4);
             if (playerSlot < 0 || playerSlot >= maximumPlayers)
             {
                 return false;
@@ -722,9 +739,7 @@ namespace PiGame.Lobby
 
         private int FindAvailableSlot()
         {
-            int maximumPlayers = _rules != null
-                ? Mathf.Clamp(_rules.MaximumPlayers, 1, 4)
-                : 4;
+            int maximumPlayers = Mathf.Clamp(_rules.MaximumPlayers, 1, 4);
 
             for (int slot = 0; slot < maximumPlayers; slot++)
             {
@@ -755,9 +770,7 @@ namespace PiGame.Lobby
                 return false;
             }
 
-            return _rules != null
-                ? _rules.IsCharacterAvailable(characterId)
-                : Array.IndexOf(FallbackCharacters, characterId) >= 0;
+            return _rules.IsCharacterAvailable(characterId);
         }
 
         private bool IsValidMapVoteOption(LobbyMapId mapId)
@@ -807,6 +820,7 @@ namespace PiGame.Lobby
             }
 
             _winningMap.Value = LobbyMapId.None;
+            _isRandomMapResult.Value = false;
             _stage.Value = LobbyStage.MapVoting;
         }
 
@@ -828,10 +842,13 @@ namespace PiGame.Lobby
                 return;
             }
 
+            _isRandomMapResult.Value = winningOption == LobbyMapId.Random;
             _winningMap.Value = concreteMap;
             _stage.Value = LobbyStage.MatchStarting;
             StopMatchStartRoutine();
-            _matchStartRoutine = StartCoroutine(RequestMatchStartAfterResult(concreteMap));
+            _matchStartRoutine = StartCoroutine(RequestMatchStartAfterResult(
+                concreteMap,
+                _isRandomMapResult.Value));
         }
 
         private LobbyMapId ResolveWinningVoteOption()
@@ -868,11 +885,20 @@ namespace PiGame.Lobby
                 for (int i = 0; i < _maps.Length; i++)
                 {
                     LobbyMapDefinition map = _maps[i];
-                    if (map != null && map.Id != LobbyMapId.None && map.Id != LobbyMapId.Random)
+                    if (map != null
+                        && map.Id != LobbyMapId.None
+                        && map.Id != LobbyMapId.Random
+                        && !validMaps.Contains(map.Id))
                     {
                         validMaps.Add(map.Id);
                     }
                 }
+            }
+
+            MatchSession session = MatchSession.Instance;
+            if (validMaps.Count > 1 && session != null && session.ConsecutiveMapCount >= 2)
+            {
+                validMaps.Remove(session.LastMapId);
             }
 
             return validMaps.Count > 0
@@ -880,8 +906,13 @@ namespace PiGame.Lobby
                 : LobbyMapId.None;
         }
 
-        private IEnumerator RequestMatchStartAfterResult(LobbyMapId mapId)
+        private IEnumerator RequestMatchStartAfterResult(LobbyMapId mapId, bool isRandomResult)
         {
+            if (isRandomResult)
+            {
+                yield return new WaitForSecondsRealtime(RandomMapDrawSeconds);
+            }
+
             yield return new WaitForSecondsRealtime(_mapResultDisplaySeconds);
 
             _matchStartRoutine = null;
@@ -901,6 +932,7 @@ namespace PiGame.Lobby
             StopMatchStartRoutine();
             _mapVotes.Clear();
             _winningMap.Value = LobbyMapId.None;
+            _isRandomMapResult.Value = false;
 
             for (int i = 0; i < _players.Count; i++)
             {
@@ -918,6 +950,7 @@ namespace PiGame.Lobby
             _players.Clear();
             _mapVotes.Clear();
             _winningMap.Value = LobbyMapId.None;
+            _isRandomMapResult.Value = false;
             _stage.Value = LobbyStage.CharacterSelection;
         }
 

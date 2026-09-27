@@ -11,18 +11,18 @@ namespace PiGame.UI
         [SerializeField] private Button _hostButton;
         [SerializeField] private Button _clientButton;
         [SerializeField] private Button _secondaryButton;
+        [SerializeField] private Button _optionsButton;
+        [SerializeField] private Text _clientButtonLabel;
         [SerializeField] private Text _secondaryButtonLabel;
         [SerializeField] private Text _statusText;
+        [SerializeField] private InputField _joinCodeInput;
 
-        private InputField _joinCodeInput;
-        private Text _clientButtonLabel;
         private Coroutine _selectionRoutine;
         private GameObject _selectionTarget;
         private Navigation _hostNavigation;
         private Navigation _clientNavigation;
         private Navigation _secondaryNavigation;
-        private bool _navigationCached;
-        private bool _initializationErrorReported;
+        private bool _initialized;
         private bool _isConnecting;
         private bool _isEnteringJoinCode;
 
@@ -30,15 +30,16 @@ namespace PiGame.UI
         public event Action<string> ClientRequested;
         public event Action CancelConnectionRequested;
         public event Action QuitRequested;
+        public event Action OptionsRequested;
 
         private void Awake()
         {
-            EnsureInitialized();
+            Initialize();
         }
 
         private void OnEnable()
         {
-            if (!EnsureInitialized())
+            if (!Initialize())
             {
                 return;
             }
@@ -46,54 +47,39 @@ namespace PiGame.UI
             _hostButton.onClick.RemoveListener(HandleHostClicked);
             _clientButton.onClick.RemoveListener(HandleClientClicked);
             _secondaryButton.onClick.RemoveListener(HandleSecondaryClicked);
+            _optionsButton.onClick.RemoveListener(HandleOptionsClicked);
             _joinCodeInput.onValueChanged.RemoveListener(HandleJoinCodeChanged);
             _hostButton.onClick.AddListener(HandleHostClicked);
             _clientButton.onClick.AddListener(HandleClientClicked);
             _secondaryButton.onClick.AddListener(HandleSecondaryClicked);
+            _optionsButton.onClick.AddListener(HandleOptionsClicked);
             _joinCodeInput.onValueChanged.AddListener(HandleJoinCodeChanged);
             FocusDefaultButton();
         }
 
         private void OnDisable()
         {
-            if (_hostButton != null)
-            {
-                _hostButton.onClick.RemoveListener(HandleHostClicked);
-            }
-
-            if (_clientButton != null)
-            {
-                _clientButton.onClick.RemoveListener(HandleClientClicked);
-            }
-
-            if (_secondaryButton != null)
-            {
-                _secondaryButton.onClick.RemoveListener(HandleSecondaryClicked);
-            }
-
-            if (_joinCodeInput != null)
-            {
-                _joinCodeInput.onValueChanged.RemoveListener(HandleJoinCodeChanged);
-            }
-
-            StopSelectionRoutine();
-            if (_navigationCached)
-            {
-                RestoreNavigation();
-            }
-        }
-
-        public void ShowIdle()
-        {
-            if (!EnsureInitialized())
+            if (!_initialized)
             {
                 return;
             }
 
+            _hostButton.onClick.RemoveListener(HandleHostClicked);
+            _clientButton.onClick.RemoveListener(HandleClientClicked);
+            _secondaryButton.onClick.RemoveListener(HandleSecondaryClicked);
+            _optionsButton.onClick.RemoveListener(HandleOptionsClicked);
+            _joinCodeInput.onValueChanged.RemoveListener(HandleJoinCodeChanged);
+            StopSelectionRoutine();
+            RestoreNavigation();
+        }
+
+        public void ShowIdle()
+        {
             _isConnecting = false;
             _isEnteringJoinCode = false;
             _hostButton.gameObject.SetActive(true);
             _clientButton.gameObject.SetActive(true);
+            _optionsButton.gameObject.SetActive(true);
             _joinCodeInput.gameObject.SetActive(false);
             _joinCodeInput.interactable = true;
             _joinCodeInput.SetTextWithoutNotify(string.Empty);
@@ -107,11 +93,6 @@ namespace PiGame.UI
 
         public void ShowConnecting(string message)
         {
-            if (!EnsureInitialized())
-            {
-                return;
-            }
-
             _isConnecting = true;
             SetButtonsInteractable(false);
             _joinCodeInput.interactable = false;
@@ -123,11 +104,6 @@ namespace PiGame.UI
 
         public void ShowError(string message)
         {
-            if (!EnsureInitialized())
-            {
-                return;
-            }
-
             _isConnecting = false;
             if (_isEnteringJoinCode)
             {
@@ -154,26 +130,17 @@ namespace PiGame.UI
 
         public void FocusDefaultButton()
         {
-            if (!EnsureInitialized())
-            {
-                return;
-            }
-
             SelectButtonNextFrame(_hostButton.gameObject);
         }
 
         public void SetInteractionEnabled(bool enabled)
         {
-            if (!EnsureInitialized())
-            {
-                return;
-            }
-
             if (!enabled)
             {
                 _hostButton.interactable = false;
                 _clientButton.interactable = false;
                 _secondaryButton.interactable = false;
+                _optionsButton.interactable = false;
                 return;
             }
 
@@ -181,6 +148,7 @@ namespace PiGame.UI
             _clientButton.interactable = !_isConnecting;
             _joinCodeInput.interactable = _isEnteringJoinCode && !_isConnecting;
             _secondaryButton.interactable = true;
+            _optionsButton.interactable = true;
         }
 
         public void OnCancel(BaseEventData eventData)
@@ -229,10 +197,19 @@ namespace PiGame.UI
             QuitRequested?.Invoke();
         }
 
+        private void HandleOptionsClicked()
+        {
+            if (!_isConnecting && !_isEnteringJoinCode)
+            {
+                OptionsRequested?.Invoke();
+            }
+        }
+
         private void ShowJoinCodeEntry()
         {
             _isEnteringJoinCode = true;
             _hostButton.gameObject.SetActive(false);
+            _optionsButton.gameObject.SetActive(false);
             _clientButton.gameObject.SetActive(true);
             _joinCodeInput.gameObject.SetActive(true);
             _joinCodeInput.interactable = true;
@@ -247,6 +224,7 @@ namespace PiGame.UI
         {
             _hostButton.interactable = interactable;
             _clientButton.interactable = interactable;
+            _optionsButton.interactable = interactable;
         }
 
         private void DisableNavigation()
@@ -256,6 +234,7 @@ namespace PiGame.UI
             _hostButton.navigation = disabledNavigation;
             _clientButton.navigation = disabledNavigation;
             _secondaryButton.navigation = disabledNavigation;
+            _optionsButton.navigation = disabledNavigation;
         }
 
         private void RestoreNavigation()
@@ -263,6 +242,7 @@ namespace PiGame.UI
             _hostButton.navigation = _hostNavigation;
             _clientButton.navigation = _clientNavigation;
             _secondaryButton.navigation = _secondaryNavigation;
+            ConfigureIdleNavigation();
         }
 
         private void ConfigureJoinCodeNavigation()
@@ -334,10 +314,7 @@ namespace PiGame.UI
 
         private void SetClientButtonLabel(string label)
         {
-            if (_clientButtonLabel != null)
-            {
-                _clientButtonLabel.text = label;
-            }
+            _clientButtonLabel.text = label;
         }
 
         private void HandleJoinCodeChanged(string value)
@@ -383,121 +360,63 @@ namespace PiGame.UI
             return true;
         }
 
-        private bool EnsureInitialized()
+        public bool Initialize()
         {
+            if (_initialized)
+            {
+                return true;
+            }
+
             if (_hostButton == null
                 || _clientButton == null
                 || _secondaryButton == null
+                || _optionsButton == null
+                || _clientButtonLabel == null
                 || _secondaryButtonLabel == null
-                || _statusText == null)
+                || _statusText == null
+                || _joinCodeInput == null)
             {
-                if (!_initializationErrorReported)
-                {
-                    Debug.LogError(
-                        "ConnectionPanelUI possui referências obrigatórias ausentes.",
-                        this);
-                    _initializationErrorReported = true;
-                }
-
+                Debug.LogError(
+                    "ConnectionPanelUI possui referências obrigatórias ausentes no Inspector.",
+                    this);
+                enabled = false;
                 return false;
             }
 
-            _clientButtonLabel ??= _clientButton.GetComponentInChildren<Text>();
+            _hostNavigation = _hostButton.navigation;
+            _clientNavigation = _clientButton.navigation;
+            _secondaryNavigation = _secondaryButton.navigation;
+            _initialized = true;
 
-            if (_joinCodeInput == null)
-            {
-                Transform inputParent = _hostButton.transform.parent;
-                Transform existingInput = inputParent.Find("SessionCodeInput");
-                if (existingInput != null)
-                {
-                    _joinCodeInput = existingInput.GetComponent<InputField>();
-                }
-
-                if (_joinCodeInput == null)
-                {
-                    CreateJoinCodeInput();
-                }
-            }
-
-            if (!_navigationCached)
-            {
-                _hostNavigation = _hostButton.navigation;
-                _clientNavigation = _clientButton.navigation;
-                _secondaryNavigation = _secondaryButton.navigation;
-                _navigationCached = true;
-            }
-
-            return _joinCodeInput != null;
+            return true;
         }
 
-        private void CreateJoinCodeInput()
+        private void ConfigureIdleNavigation()
         {
-            GameObject inputObject = new GameObject(
-                "SessionCodeInput",
-                typeof(RectTransform),
-                typeof(CanvasRenderer),
-                typeof(Image),
-                typeof(InputField));
-            inputObject.layer = gameObject.layer;
-            inputObject.transform.SetParent(_hostButton.transform.parent, false);
+            Navigation hostNavigation = Navigation.defaultNavigation;
+            hostNavigation.mode = Navigation.Mode.Explicit;
+            hostNavigation.selectOnDown = _clientButton;
+            hostNavigation.selectOnUp = _secondaryButton;
+            _hostButton.navigation = hostNavigation;
 
-            RectTransform inputRect = inputObject.GetComponent<RectTransform>();
-            inputRect.anchorMin = new Vector2(0.5f, 0.5f);
-            inputRect.anchorMax = new Vector2(0.5f, 0.5f);
-            inputRect.anchoredPosition = new Vector2(0f, 90f);
-            inputRect.sizeDelta = new Vector2(350f, 58f);
+            Navigation clientNavigation = Navigation.defaultNavigation;
+            clientNavigation.mode = Navigation.Mode.Explicit;
+            clientNavigation.selectOnUp = _hostButton;
+            clientNavigation.selectOnDown = _optionsButton;
+            _clientButton.navigation = clientNavigation;
 
-            Image inputBackground = inputObject.GetComponent<Image>();
-            inputBackground.color = new Color(0.09f, 0.08f, 0.16f, 0.9f);
+            Navigation optionsNavigation = Navigation.defaultNavigation;
+            optionsNavigation.mode = Navigation.Mode.Explicit;
+            optionsNavigation.selectOnUp = _clientButton;
+            optionsNavigation.selectOnDown = _secondaryButton;
+            _optionsButton.navigation = optionsNavigation;
 
-            Text inputText = CreateInputText(inputObject.transform, "Text", Color.white);
-            Text placeholderText = CreateInputText(
-                inputObject.transform,
-                "Placeholder",
-                new Color(1f, 1f, 1f, 0.35f));
-            placeholderText.text = "CÓDIGO";
-
-            _joinCodeInput = inputObject.GetComponent<InputField>();
-            _joinCodeInput.targetGraphic = inputBackground;
-            _joinCodeInput.textComponent = inputText;
-            _joinCodeInput.placeholder = placeholderText;
-            _joinCodeInput.characterLimit = 12;
-            _joinCodeInput.lineType = InputField.LineType.SingleLine;
-            _joinCodeInput.contentType = InputField.ContentType.Alphanumeric;
-            _joinCodeInput.caretColor = Color.white;
-            _joinCodeInput.selectionColor = new Color(0.32f, 0.86f, 0.78f, 0.45f);
-            inputObject.SetActive(false);
+            Navigation secondaryNavigation = Navigation.defaultNavigation;
+            secondaryNavigation.mode = Navigation.Mode.Explicit;
+            secondaryNavigation.selectOnUp = _optionsButton;
+            secondaryNavigation.selectOnDown = _hostButton;
+            _secondaryButton.navigation = secondaryNavigation;
         }
 
-        private Text CreateInputText(
-            Transform parent,
-            string objectName,
-            Color color)
-        {
-            GameObject textObject = new GameObject(
-                objectName,
-                typeof(RectTransform),
-                typeof(CanvasRenderer),
-                typeof(Text));
-            textObject.layer = gameObject.layer;
-            textObject.transform.SetParent(parent, false);
-
-            RectTransform textRect = textObject.GetComponent<RectTransform>();
-            textRect.anchorMin = Vector2.zero;
-            textRect.anchorMax = Vector2.one;
-            textRect.offsetMin = new Vector2(14f, 6f);
-            textRect.offsetMax = new Vector2(-14f, -6f);
-
-            Text text = textObject.GetComponent<Text>();
-            text.font = _statusText.font;
-            text.fontSize = 21;
-            text.alignment = TextAnchor.MiddleCenter;
-            text.color = color;
-            text.raycastTarget = false;
-            text.supportRichText = false;
-            text.horizontalOverflow = HorizontalWrapMode.Overflow;
-            text.verticalOverflow = VerticalWrapMode.Truncate;
-            return text;
-        }
     }
 }
