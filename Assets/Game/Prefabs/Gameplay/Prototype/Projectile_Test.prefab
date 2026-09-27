@@ -209,9 +209,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PiGame.Gameplay.NetworkProjectile
   ShowTopMostFoldoutHeaderGroup: 1
-  _speed: 16
-  _lifetimeSeconds: 3
-  _damage: 1
 --- !u!61 &1071057260996677443
 BoxCollider2D:
   m_ObjectHideFlags: 0
