@@ -58,6 +58,17 @@ namespace PiGame.Gameplay
 
         public bool IsCrouching => _isCrouching;
 
+        public Vector2 ReadMovementDirection()
+        {
+            float horizontal = _moveAction.action.ReadValue<Vector2>().x;
+            if (Mathf.Abs(horizontal) <= 0.01f)
+            {
+                horizontal = _spriteRenderer.flipX ? -1f : 1f;
+            }
+
+            return horizontal < 0f ? Vector2.left : Vector2.right;
+        }
+
         private void Awake()
         {
             _rigidbody = GetComponent<Rigidbody2D>();

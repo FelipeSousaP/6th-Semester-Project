@@ -17,6 +17,7 @@ namespace PiGame.Gameplay
         [SerializeField] private float _aimIndicatorDistance = 1.15f;
 
         private NetworkPlayerState _playerState;
+        private PlayerMove _playerMove;
         private ICharacterCombat _characterCombat;
         private Vector2 _aimDirection = Vector2.right;
         private bool _localAimHeld;
@@ -28,6 +29,7 @@ namespace PiGame.Gameplay
         private void Awake()
         {
             _playerState = GetComponent<NetworkPlayerState>();
+            _playerMove = GetComponent<PlayerMove>();
             _characterCombat = GetComponent<ICharacterCombat>();
             if (_characterCombat == null || _aimIndicator == null)
             {
@@ -176,13 +178,14 @@ namespace PiGame.Gameplay
             }
 
             _localAbilityHeld = abilityPressed;
+            Vector2 moveDirection = _playerMove.ReadMovementDirection();
             if (abilityPressed)
             {
-                BeginAbilityRpc(_aimDirection);
+                BeginAbilityRpc(_aimDirection, moveDirection);
             }
             else
             {
-                EndAbilityRpc(_aimDirection);
+                EndAbilityRpc(_aimDirection, moveDirection);
             }
         }
 
@@ -204,20 +207,22 @@ namespace PiGame.Gameplay
         }
 
         [Rpc(SendTo.Server)]
-        private void BeginAbilityRpc(Vector2 direction, RpcParams rpcParams = default)
+        private void BeginAbilityRpc(
+            Vector2 aimDirection, Vector2 moveDirection, RpcParams rpcParams = default)
         {
             if (_playerState.CanAct && rpcParams.Receive.SenderClientId == OwnerClientId)
             {
-                _characterCombat.BeginAbilityServer(direction);
+                _characterCombat.BeginAbilityServer(aimDirection, moveDirection);
             }
         }
 
         [Rpc(SendTo.Server)]
-        private void EndAbilityRpc(Vector2 direction, RpcParams rpcParams = default)
+        private void EndAbilityRpc(
+            Vector2 aimDirection, Vector2 moveDirection, RpcParams rpcParams = default)
         {
             if (_playerState.CanAct && rpcParams.Receive.SenderClientId == OwnerClientId)
             {
-                _characterCombat.EndAbilityServer(direction);
+                _characterCombat.EndAbilityServer(aimDirection, moveDirection);
             }
         }
 

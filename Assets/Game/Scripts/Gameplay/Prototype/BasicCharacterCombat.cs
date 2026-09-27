@@ -45,11 +45,11 @@ namespace PiGame.Gameplay
                 OwnerClientId, shotDirection, _playerState.IndicatorColor, _projectile);
         }
 
-        public void BeginAbilityServer(Vector2 direction)
+        public void BeginAbilityServer(Vector2 aimDirection, Vector2 moveDirection)
         {
         }
 
-        public void EndAbilityServer(Vector2 direction)
+        public void EndAbilityServer(Vector2 aimDirection, Vector2 moveDirection)
         {
         }
     }
