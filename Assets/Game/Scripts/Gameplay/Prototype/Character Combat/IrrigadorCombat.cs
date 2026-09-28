@@ -12,6 +12,7 @@ namespace PiGame.Gameplay
         [SerializeField, Min(0f)] private float _shotCooldownSeconds = 0.35f;
         [SerializeField, Min(0f)] private float _projectileSpawnDistance = 0.85f;
         [SerializeField, Min(1f)] private int _maxNails = 4;
+        [SerializeField] private AmmoIndicatorsView _nailIndicators;
         private NetworkVariable<int> _nails = new NetworkVariable<int>(4);
         public int Nails => _nails.Value;
         
@@ -52,10 +53,31 @@ namespace PiGame.Gameplay
 
         public override void OnNetworkSpawn()
         {
+            _nails.OnValueChanged += HandleNailsChanged;
+            _playerState.StateChanged += RefreshNailIndicators;
+            RefreshNailIndicators();
+
             if(!IsServer)
                 return;
             
             _nails.Value = _maxNails;
+        }
+
+        public override void OnNetworkDespawn()
+        {
+            _nails.OnValueChanged -= HandleNailsChanged;
+            _playerState.StateChanged -= RefreshNailIndicators;
+            _nailIndicators.SetCount(0, false);
+        }
+
+        private void HandleNailsChanged(int previousValue, int currentValue)
+        {
+            RefreshNailIndicators();
+        }
+
+        private void RefreshNailIndicators()
+        {
+            _nailIndicators.SetCount(_nails.Value, IsOwner && _playerState.CanAct);
         }
 
         public void ShootServer(Vector2 direction)
