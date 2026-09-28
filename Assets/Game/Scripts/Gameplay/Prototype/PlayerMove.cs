@@ -54,9 +54,17 @@ namespace PiGame.Gameplay
         private float _wallJumpControlTimer ;
         private bool _isGameplayInputBlocked;
         private bool _waitForJumpRelease;
+        private bool _hasHorizontalMovementOverride;
+        private float _horizontalMovementOverrideSpeed;
         private InputActionMap _playerActions;
 
         public bool IsCrouching => _isCrouching;
+
+        public bool CanBeginWallRestrictedAbility()
+        {
+            return !_bodyCollider.IsTouchingLayers(_wallLayer)
+                && _wallJumpControlTimer <= 0f;
+        }
 
         public Vector2 ReadMovementDirection()
         {
@@ -98,6 +106,7 @@ namespace PiGame.Gameplay
                 return;
             _isGameplayInputBlocked = false;
             _waitForJumpRelease = false;
+            _hasHorizontalMovementOverride = false;
             ResetCrouch();
             _playerActions?.Disable();
         }
@@ -123,6 +132,17 @@ namespace PiGame.Gameplay
 
             CheckGround();
             CheckWall();
+            if (_hasHorizontalMovementOverride)
+            {
+                ResetCrouch();
+                _rigidbody.linearVelocity = new Vector2(
+                    _horizontalMovementOverrideSpeed, _rigidbody.linearVelocity.y);
+                _playerAnimator.SetFloat("xVelocity", Mathf.Abs(_horizontalMovementOverrideSpeed));
+                _playerAnimator.SetFloat("yVelocity", _rigidbody.linearVelocity.y);
+                _spriteRenderer.flipX = _horizontalMovementOverrideSpeed < 0f;
+                return;
+            }
+
             UpdateCrouch();
             
             HandleMovement();
@@ -150,6 +170,26 @@ namespace PiGame.Gameplay
             {
                 ResetCrouch();
                 _rigidbody.linearVelocity = new Vector2(0f, _rigidbody.linearVelocity.y);
+            }
+        }
+
+        public void BeginHorizontalMovementOverride(float speed)
+        {
+            if (!IsOwner)
+            {
+                return;
+            }
+
+            _horizontalMovementOverrideSpeed = speed;
+            _hasHorizontalMovementOverride = true;
+            ResetCrouch();
+        }
+
+        public void EndHorizontalMovementOverride()
+        {
+            if (IsOwner)
+            {
+                _hasHorizontalMovementOverride = false;
             }
         }
 
