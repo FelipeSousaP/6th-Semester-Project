@@ -76,6 +76,11 @@ namespace PiGame.Gameplay
                 return;
             }
 
+            if (other.GetComponentInParent<NetworkProjectile>() != null)
+            {
+                return;
+            }
+
             NetworkPlayerState playerState = other.GetComponentInParent<NetworkPlayerState>();
             if (playerState != null)
             {
