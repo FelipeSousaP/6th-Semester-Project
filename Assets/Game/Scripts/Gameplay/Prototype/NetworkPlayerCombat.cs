@@ -148,7 +148,6 @@ namespace PiGame.Gameplay
 
 
             ShootReleasedRpc();
-            FireRpc(_aimDirection);
         }
 
         public void SetGameplayInputBlocked(bool isBlocked)

@@ -433,6 +433,13 @@ MonoBehaviour:
   _shotCooldownSeconds: 0.35
   _projectileSpawnDistance: 0.85
   _maxNails: 4
+  _magnetRadius: 8
+  _magnetAimThreshold: 0.5
+  _magnetSpeed: 10
+  _magnetStopDistance: 0.25
+  _abilityRadius: 8
+  _abilityAimThreshold: 0.5
+  _abilityPullSpeed: 25
 --- !u!114 &750885784796070611
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -7,26 +7,27 @@ namespace PiGame.Gameplay
     [RequireComponent(typeof(Collider2D))]
     public class IrrigadorProjectile : NetworkProjectile
     {
+        [Header("Projectile Settings")]
         [SerializeField] private Collider2D _collectionTrigger;
         [SerializeField] private Collider2D _tipCollider;
         [SerializeField] private Transform _tip;
         private Collider2D _projectileCollider;
+        private Rigidbody2D _rigidbody;
         [SerializeField] private LayerMask _surfaceLayer;
         public LayerMask SurfaceLayer => _surfaceLayer;
 
-        private bool _isStuck;
-        public bool IsStuck => _isStuck;
+        private bool _IsStuck;
+        public bool IsStuck => _IsStuck;
+
+        private bool _beingPulled;
+        private Vector2 _pullDirection;
+        private float _pullSpeed;
 
         private void Awake()
         {
             _projectileCollider = GetComponent<Collider2D>();
-            if (_collectionTrigger != null)
-                _collectionTrigger.enabled = false;
-            
-            if(_tipCollider != null)
-            {
-                _tipCollider.enabled = true;
-            }
+            _rigidbody = GetComponent<Rigidbody2D>();
+            UpdateColliders();
         }
 
         public void InitializeServer(
@@ -47,15 +48,14 @@ namespace PiGame.Gameplay
 
             _despawnAt = Time.time + definition.LifetimeSeconds;
 
-            _isStuck = false;
+            _IsStuck = false;
 
-            _projectileCollider.enabled = true;
-            _collectionTrigger.enabled = false;
+            UpdateColliders();
         }
 
         protected override void Update()
         {
-            if (!IsServer || !IsSpawned || _isStuck)
+            if (!IsServer || !IsSpawned || _IsStuck)
                 return;
 
             Vector2 previousTipPosition = _tip.position;
@@ -85,7 +85,7 @@ namespace PiGame.Gameplay
 
         public void HandleTipSurfaceContact(Collider2D other)
         {
-            if(!IsServer || _isStuck)
+            if(!IsServer || _IsStuck)
                 return;
 
             StickToSurface(other);
@@ -93,7 +93,8 @@ namespace PiGame.Gameplay
 
         private void StickToSurface(Collider2D surface)
         {
-            _isStuck = true;
+            _IsStuck = true;
+            _beingPulled = false;
 
             transform.rotation = Quaternion.FromToRotation(Vector2.right, _direction);
             Physics2D.SyncTransforms();
@@ -104,9 +105,7 @@ namespace PiGame.Gameplay
 
             transform.position += (Vector3)correction;
 
-            _projectileCollider.enabled = false;
-            _tipCollider.enabled = false;
-            _collectionTrigger.enabled = true;
+            UpdateColliders();
         }
 
         protected override void OnTriggerEnter2D(Collider2D other)
@@ -116,7 +115,7 @@ namespace PiGame.Gameplay
             
             NetworkPlayerState playerState = other.GetComponentInParent<NetworkPlayerState>();
 
-            if(!_isStuck)
+            if(!_IsStuck)
             {
                 if(playerState == null)
                     return;
@@ -141,7 +140,56 @@ namespace PiGame.Gameplay
             
             combat.AddNailServer();
             NetworkObject.Despawn();
+        }
+        
 
+        public void PullServer(Vector2 direction, float speed)
+        {
+            if(!IsServer || !IsStuck)
+                return;
+            
+            _beingPulled = true;
+            _pullDirection = direction;
+            _pullSpeed = speed;
+
+            UpdateColliders();
+        }
+
+        private void FixedUpdate()
+        {
+            if (!IsServer || !_beingPulled)
+                return;
+
+            _rigidbody.linearVelocity =
+                _pullDirection * _pullSpeed;
+        }
+
+        public void StopPullServer()
+        {
+            _beingPulled = false;
+            _rigidbody.linearVelocity = Vector2.zero;
+
+            UpdateColliders();
+        }
+
+        private void UpdateColliders()
+        {
+            bool isFlying = !_IsStuck && !_beingPulled;
+            bool IsStuck = _IsStuck && !_beingPulled;
+            bool isBeingPulled = _beingPulled;
+
+            if(_projectileCollider != null)
+            { 
+                _projectileCollider.enabled = isFlying || isBeingPulled;
+            }
+            if(_tipCollider != null)
+            {
+                _tipCollider.enabled = isFlying || isBeingPulled;
+            }
+            if(_collectionTrigger!= null)
+            {   
+                _collectionTrigger.enabled = IsStuck || isBeingPulled;
+            }
         }
 
     }

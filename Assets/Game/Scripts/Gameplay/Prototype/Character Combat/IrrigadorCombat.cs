@@ -23,6 +23,7 @@ namespace PiGame.Gameplay
         [SerializeField, Min(0f)] private float _magnetSpeed = 20f;
 
         [SerializeField, Min(0f)] private float _magnetStopDistance = 0.25f;
+        private bool _magnetBlockedUntilRelease;
 
         [Header("Ability Settings")]
         [SerializeField, Min(0f)] private float _abilityRadius = 8f;
@@ -34,7 +35,6 @@ namespace PiGame.Gameplay
 
         private IrrigadorProjectile _magnetTarget;
         private bool _magnetActive;
-        private NetworkVariable<NetworkObjectReference> _magnetTargetReference = new NetworkVariable<NetworkObjectReference>();
 
         private NetworkPlayerState _playerState;
         private Rigidbody2D _rigidbody;
@@ -65,6 +65,9 @@ namespace PiGame.Gameplay
 
             if(_nails.Value <= 0)
             {
+                if(_magnetBlockedUntilRelease)
+                    return;
+
                 TryActiveMagnetServer(direction);
                 return;
             }
@@ -87,6 +90,12 @@ namespace PiGame.Gameplay
                 OwnerClientId, shotDirection, _playerState.IndicatorColor, _projectile);
             
             _nails.Value--;
+
+            if(_nails.Value <= 0)
+            {
+                _magnetBlockedUntilRelease = true;
+                StopMagnetServer();
+            }
         }
 
         public void AddNailServer()
@@ -142,13 +151,11 @@ namespace PiGame.Gameplay
             }
 
             _magnetTarget = target;
-            _magnetTargetReference.Value = target.NetworkObject;
             _magnetActive = true;
         }
         private void StopMagnetServer()
         {
             _magnetTarget = null;
-            _magnetTargetReference.Value = default;
             _magnetActive = false;
         }
 
@@ -157,6 +164,7 @@ namespace PiGame.Gameplay
            if(!IsServer)
             return;
 
+            _magnetBlockedUntilRelease = false;
             StopMagnetServer(); 
         }
 
@@ -165,8 +173,14 @@ namespace PiGame.Gameplay
             if(!IsServer || !_magnetActive)
                 return;
 
-            IrrigadorProjectile target = FindMagnetTarget(direction);
+            if(_nails.Value > 0 || _magnetBlockedUntilRelease)
+            {
+                StopMagnetServer();
+                return;
+            }
 
+            IrrigadorProjectile target = FindMagnetTarget(direction);
+            
             if(target == null)
             {
                 StopMagnetServer();
@@ -174,7 +188,7 @@ namespace PiGame.Gameplay
             }
 
             _magnetTarget = target;
-            _magnetTargetReference.Value = target.NetworkObject;
+
         }
         private void FixedUpdate()
         {
@@ -223,6 +237,9 @@ namespace PiGame.Gameplay
 
                 if(!nail.IsStuck)
                     continue;
+                if(nail.ShooterClientId != OwnerClientId)
+                    continue;
+                    
                 Vector2 toNail = ((Vector2)nail.transform.position - (Vector2)transform.position).normalized;
 
                 float alignment = Vector2.Dot(normalizedAim,toNail);
@@ -278,11 +295,27 @@ namespace PiGame.Gameplay
                 nail.PullServer(toPlayer.normalized, _abilityPullSpeed);
             }
 
-            
+            if(_abilityTargets.Count == 0)
+            {
+                _abilityActive = false;
+            }
         }
 
         public void EndAbilityServer(Vector2 aimDirection, Vector2 moveDirection)
         {
+            if(!IsServer)
+                return;
+
+            foreach(IrrigadorProjectile nail in _abilityTargets)
+            {
+                if(nail != null)
+                {
+                    nail.StopPullServer();
+                }
+            }
+
+            _abilityTargets.Clear();
+            _abilityActive = false;
         }
 
 
