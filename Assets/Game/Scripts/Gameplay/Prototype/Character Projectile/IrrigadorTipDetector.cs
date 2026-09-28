@@ -4,13 +4,18 @@ namespace PiGame.Gameplay
 {
     public class IrrigadorTipDetector : MonoBehaviour
     {
-        [SerializeField] private LayerMask _surfaceLayer;
+        private LayerMask _surfaceLayer;
         
         private IrrigadorProjectile _projectile;
 
         private void Awake()
         {
             _projectile = GetComponentInParent<IrrigadorProjectile>();
+            if(_projectile != null)
+            {
+               _surfaceLayer = _projectile.SurfaceLayer; 
+            }
+            
         }
 
         private void OnTriggerEnter2D(Collider2D other)

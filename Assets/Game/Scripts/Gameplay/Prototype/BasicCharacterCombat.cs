@@ -52,5 +52,15 @@ namespace PiGame.Gameplay
         public void EndAbilityServer(Vector2 aimDirection, Vector2 moveDirection)
         {
         }
+
+        public void ShootReleaseServer()
+        {
+            
+        }
+
+        public void UpdateShootAimServer(Vector2 direction)
+        {
+            
+        }
     }
 }

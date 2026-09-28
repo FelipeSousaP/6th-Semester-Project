@@ -13,6 +13,7 @@ namespace PiGame.Gameplay
         private SpriteRenderer _spriteRenderer;
         protected Vector2 _direction;
         protected ulong _shooterClientId;
+        public ulong ShooterClientId => _shooterClientId;
         protected float _despawnAt;
         protected float _speed;
         protected int _damage;

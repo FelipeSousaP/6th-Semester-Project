@@ -9,15 +9,24 @@ namespace PiGame.Gameplay
     {
         [SerializeField] private Collider2D _collectionTrigger;
         [SerializeField] private Collider2D _tipCollider;
+        [SerializeField] private Transform _tip;
         private Collider2D _projectileCollider;
+        [SerializeField] private LayerMask _surfaceLayer;
+        public LayerMask SurfaceLayer => _surfaceLayer;
 
         private bool _isStuck;
+        public bool IsStuck => _isStuck;
 
         private void Awake()
         {
             _projectileCollider = GetComponent<Collider2D>();
             if (_collectionTrigger != null)
                 _collectionTrigger.enabled = false;
+            
+            if(_tipCollider != null)
+            {
+                _tipCollider.enabled = true;
+            }
         }
 
         public void InitializeServer(
@@ -49,11 +58,24 @@ namespace PiGame.Gameplay
             if (!IsServer || !IsSpawned || _isStuck)
                 return;
 
-            if(_isStuck)
-                return;
+            Vector2 previousTipPosition = _tip.position;
 
-            transform.position +=
-                (Vector3)(_direction * _speed * Time.deltaTime);
+            Vector2 movement = _direction * _speed * Time.deltaTime;
+
+            RaycastHit2D hit = Physics2D.Raycast(
+                previousTipPosition,
+                movement.normalized,
+                movement.magnitude,
+                _surfaceLayer
+            );
+
+            if (hit.collider != null)
+            {
+                HandleTipSurfaceContact(hit.collider);
+                return;
+            }
+
+            transform.position += (Vector3)movement;
 
             if (Time.time >= _despawnAt)
             {
