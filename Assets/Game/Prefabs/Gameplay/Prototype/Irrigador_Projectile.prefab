@@ -332,6 +332,11 @@ MonoBehaviour:
   _surfaceLayer:
     serializedVersion: 2
     m_Bits: 72
+  _playerLayer:
+    serializedVersion: 2
+    m_Bits: 128
+  _fallGracity: 20
+  _abilityPull: 0
 --- !u!1 &4048267027654179139
 GameObject:
   m_ObjectHideFlags: 0

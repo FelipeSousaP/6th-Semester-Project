@@ -292,7 +292,7 @@ namespace PiGame.Gameplay
                 if(toPlayer.sqrMagnitude <= 0.01f)
                     continue;
                 
-                nail.PullServer(toPlayer.normalized, _abilityPullSpeed);
+                nail.PullServer(toPlayer.normalized, _abilityPullSpeed,true);
             }
 
             if(_abilityTargets.Count == 0)
