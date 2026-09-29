@@ -106,10 +106,6 @@ namespace PiGame.Gameplay
                 _aimDirection = aim.normalized;
                 RefreshAimIndicator();
             }
-            if(_localAimHeld)
-            {
-                UpdateShootAimRpc(_aimDirection);
-            }
 
             UpdateAbilityInput();
 
@@ -137,8 +133,7 @@ namespace PiGame.Gameplay
             {
                 _localAimHeld = true;
                 RefreshAimIndicator();
-
-                FireRpc(_aimDirection);
+                UpdateShootAimRpc(_aimDirection);
                 return;
             }
 
@@ -149,8 +144,7 @@ namespace PiGame.Gameplay
 
             _localAimHeld = false;
             RefreshAimIndicator();
-
-
+            FireRpc(_aimDirection);
             ShootReleasedRpc();
         }
 
@@ -207,6 +201,11 @@ namespace PiGame.Gameplay
 
         private void CancelLocalAim()
         {
+            if (_localAimHeld)
+            {
+                ShootReleasedRpc();
+            }
+
             _localAimHeld = false;
             RefreshAimIndicator();
         }

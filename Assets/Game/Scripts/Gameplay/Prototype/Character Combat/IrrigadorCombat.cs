@@ -86,13 +86,7 @@ namespace PiGame.Gameplay
                 return;
 
             if(_nails.Value <= 0)
-            {
-                if(_magnetBlockedUntilRelease)
-                    return;
-
-                TryActiveMagnetServer(direction);
                 return;
-            }
 
             if(_projectile == null || _projectile.Prefab == null || Time.time < _nextShotTime)
                 return;
@@ -192,25 +186,17 @@ namespace PiGame.Gameplay
 
         public void UpdateShootAimServer(Vector2 direction)
         {
-            if(!IsServer || !_magnetActive)
+            if(!IsServer)
                 return;
 
             if(_nails.Value > 0 || _magnetBlockedUntilRelease)
             {
-                StopMagnetServer();
+                if (_magnetActive)
+                    StopMagnetServer();
                 return;
             }
 
-            IrrigadorProjectile target = FindMagnetTarget(direction);
-            
-            if(target == null)
-            {
-                StopMagnetServer();
-                return;
-            }
-
-            _magnetTarget = target;
-
+            TryActiveMagnetServer(direction);
         }
         private void FixedUpdate()
         {
