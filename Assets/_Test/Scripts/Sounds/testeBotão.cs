@@ -11,6 +11,11 @@ namespace PiGame.Sound.Tests
         {
             NetworkSoundManager.Instance.PlayOST(OSTList.OST1);
         }
+
+        public void AoClicarNoBotao3()
+        {
+            NetworkSoundManager.Instance.PlayAmbience(AmbienceList.Ambience2);
+        }
     }
 }
 

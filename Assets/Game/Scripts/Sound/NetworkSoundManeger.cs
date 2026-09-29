@@ -4,8 +4,24 @@ using UnityEngine;
 
 namespace PiGame.Sound
 {
-    public enum SFXList { SFX1, SFX2, SFX3 }
-    public enum OSTList { OST1, OST2, OST3 }
+    public enum SFXList 
+    {
+        SFX1,
+        SFX2,
+        SFX3 
+    }
+    public enum OSTList
+    {
+        OST1,
+        OST2,
+        OST3 
+    }
+    public enum AmbienceList 
+    {
+        Ambience1,
+        Ambience2, 
+        Ambience3 
+    }
 
     public class NetworkSoundManager : NetworkBehaviour
     {
@@ -25,16 +41,26 @@ namespace PiGame.Sound
             public AudioClip clip;
         }
 
-        [Header("Componentes de Áudio")]
+        [System.Serializable]
+        public struct AmbienceData
+        {
+            public AmbienceList AmbienceType;
+            public AudioClip clip;
+        }
+
+        [Header("Audio Components")]
         [SerializeField] private AudioSource sfxSource;
+        [SerializeField] private AudioSource AmbienceSource;
         [SerializeField] private AudioSource ostSource;
 
-        [Header("Listas de Áudio (Configure no Inspector)")]
+        [Header("Audio Lists")]
         [SerializeField] private List<SoundData> sfxList = new();
         [SerializeField] private List<MusicData> ostList = new();
+        [SerializeField] private List<AmbienceData> AmbienceList = new();
 
         private Dictionary<SFXList, AudioClip> _sfxDict = new();
         private Dictionary<OSTList, AudioClip> _ostDict = new();
+        private Dictionary<AmbienceList, AudioClip> _AmbienceDict = new();
 
         private void Awake()
         {
@@ -56,6 +82,13 @@ namespace PiGame.Sound
                 if (!_ostDict.ContainsKey(item.ostType))
                     _ostDict.Add(item.ostType, item.clip);
             }
+
+            foreach (var item in AmbienceList)
+            {
+                if (!_AmbienceDict.ContainsKey(item.AmbienceType))
+                    _AmbienceDict.Add(item.AmbienceType, item.clip);
+            }
+
         }
 
         public override void OnNetworkSpawn()
@@ -74,6 +107,26 @@ namespace PiGame.Sound
             if (Instance == null) return;
             Instance.SendOSTServerRpc(ost);
         }
+
+        public void PlayAmbience(AmbienceList ambience)
+        {
+            if (Instance == null) return;
+            Instance.SendAmbienceServerRpc(ambience);
+        }
+
+        #region RPC do ambience
+        [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
+        private void SendAmbienceServerRpc(AmbienceList ambience)
+        {
+            SendAmbienceClientRpc(ambience);
+        }
+
+        [Rpc(SendTo.ClientsAndHost)]
+        private void SendAmbienceClientRpc(AmbienceList ambience)
+        {
+            PlayAmbienceLocal(ambience);
+        }
+        #endregion
 
         #region RPC do SFX
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
@@ -112,7 +165,7 @@ namespace PiGame.Sound
             }
             else
             {
-                Debug.LogWarning($"O SFX '{sfx}' não foi configurado nas listas do SoundManager!");
+                Debug.LogWarning($"O SFX '{sfx}' não foi configurado nas listas do NetworkSoundManager");
             }
         }
 
@@ -126,10 +179,24 @@ namespace PiGame.Sound
             }
             else
             {
-                Debug.LogWarning($"A OST '{ost}' não foi configurada nas listas do SoundManager!");
+                Debug.LogWarning($"A OST '{ost}' não foi configurada nas listas do NetworkSoundManager");
             }
         }
 
+        private void PlayAmbienceLocal(AmbienceList ambience)
+        {
+            if (_AmbienceDict.TryGetValue(ambience, out AudioClip clip))
+            {
+                AmbienceSource.clip = clip;
+                AmbienceSource.loop = true;
+                AmbienceSource.Play();
+            }
+            else
+            {
+                Debug.LogWarning($"A ambientação {ambience} não foi configurada nas listas do NetworkSoundManager");
+            }
+        }
+        // metodo de ambientação que envolva tempo( receber tempo e estado)
         #endregion
     }
 }
