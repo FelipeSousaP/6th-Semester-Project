@@ -11,11 +11,11 @@ namespace PiGame.Gameplay
             new NetworkVariable<Color>(Color.white);
 
         private SpriteRenderer _spriteRenderer;
-        private Vector2 _direction;
-        private ulong _shooterClientId;
-        private float _despawnAt;
-        private float _speed;
-        private int _damage;
+        protected Vector2 _direction;
+        protected ulong _shooterClientId;
+        protected float _despawnAt;
+        protected float _speed;
+        protected int _damage;
 
         private void Awake()
         {
@@ -79,6 +79,11 @@ namespace PiGame.Gameplay
             if (playerState != null)
             {
                 if (playerState.OwnerClientId == _shooterClientId)
+                {
+                    return;
+                }
+
+                if (playerState.IsInvulnerable)
                 {
                     return;
                 }
