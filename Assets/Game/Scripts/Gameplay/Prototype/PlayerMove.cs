@@ -70,6 +70,10 @@ namespace PiGame.Gameplay
             _playerState = GetComponent<NetworkPlayerState>();
             _playerAnimator = GetComponent<Animator>();
             _spriteRenderer = GetComponent<SpriteRenderer>();
+            _boxCollider2D = GetComponent<BoxCollider2D>();
+
+            _originalColliderSize = _boxCollider2D.size;
+            _originalColliderOffset = _boxCollider2D.offset;
         }
 
         public override void OnNetworkSpawn()
@@ -119,8 +123,9 @@ namespace PiGame.Gameplay
             HandleMovement();
             HandleWallSlide();
             HandleJump();
-            HandleCrouch();
 
+
+            HandleCrouch();           
         }
 
         public void SetGameplayInputBlocked(bool isBlocked)
