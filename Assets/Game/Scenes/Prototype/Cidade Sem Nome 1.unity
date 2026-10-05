@@ -7939,8 +7939,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 411349cd13f8478a934a61878e8859c6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PiGame.UI.PauseMenuUI
-  _targetCanvas: {fileID: 2100000012}
-  _font: {fileID: 11400000, guid: c29816ef4efed0b4e9c6f612184274fd, type: 2}
   _inputActions: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
   _root: {fileID: 1798912589}
   _titleText: {fileID: 1360978092}

@@ -1,8 +1,8 @@
-using UnityEngine;
-using Unity.Netcode;
-using UnityEngine.InputSystem;
-using System;
 using PiGame.Input;
+using System;
+using Unity.Netcode;
+using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace PiGame.Gameplay
 {
@@ -95,7 +95,7 @@ namespace PiGame.Gameplay
         {
             if(!IsOwner)
                 return;
-
+            Debug.Log("sasad");
             if (_isGameplayInputBlocked)
             {
                 ResetCrouch();
@@ -147,6 +147,7 @@ namespace PiGame.Gameplay
             if (_wallJumpControlTimer  > 0f)
                 return;
             Vector2 input = _moveAction.action.ReadValue<Vector2>();
+            Debug.Log("Salve, estou lendo: " + input)  ;
             if (_isCrouching)
             {
                 input.x = 0f;
@@ -291,7 +292,7 @@ namespace PiGame.Gameplay
                 Debug.LogError("Configure Move, Jump, Crouch, AimFire e Ability do mesmo Action Map no PlayerMove.", this);
                 return false;
             }
-
+            Debug.Log("é tru familia");
             _playerActions = move.actionMap;
             new InputBindingService(_playerActions.asset).Load();
             return true;
@@ -357,6 +358,28 @@ namespace PiGame.Gameplay
             {
                _rigidbody.linearVelocity = new Vector2(_rigidbody.linearVelocity.x, -_wallSlideSpeed); 
             }
+        }
+        private void OnDrawGizmosSelected()
+        {
+            if (_bodyCollider == null)
+                _bodyCollider = GetComponent<Collider2D>();
+
+            if (_bodyCollider == null)
+                return;
+
+            Bounds bounds = _bodyCollider.bounds;
+            Vector2 probeOrigin = new Vector2(
+                _groundCheck != null ? _groundCheck.position.x : bounds.center.x,
+                bounds.min.y + Physics2D.defaultContactOffset);
+            Vector2 probeSize = new Vector2(
+                Mathf.Max(0.05f, bounds.size.x * 0.75f),
+                Physics2D.defaultContactOffset * 2f);
+
+            Gizmos.color = _isGrounded ? Color.green : Color.red;
+
+            Vector2 rayDirection = Vector2.down * _groundCheckDistance;
+            Gizmos.DrawWireCube(probeOrigin, probeSize);
+            Gizmos.DrawLine(probeOrigin, probeOrigin + rayDirection);
         }
     }
 }
