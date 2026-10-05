@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 91cbe23a6c384f1ca0c0b1dba9871011, type: 3}
+  m_Name: irrigador_projectile
+  m_EditorClassIdentifier: Assembly-CSharp::PiGame.Gameplay.ProjectileDefinition
+  _prefab: {fileID: 6697223097486715078, guid: 257a41f769f80e448b866374f687e441, type: 3}
+  _damage: 1
+  _speed: 16
+  _lifetimeSeconds: 20

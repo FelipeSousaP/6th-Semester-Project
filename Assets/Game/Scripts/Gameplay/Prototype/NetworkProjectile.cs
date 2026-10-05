@@ -7,17 +7,16 @@ namespace PiGame.Gameplay
     [RequireComponent(typeof(Collider2D))]
     public class NetworkProjectile : NetworkBehaviour
     {
-        [SerializeField] private float _speed = 16f;
-        [SerializeField] private float _lifetimeSeconds = 3f;
-        [SerializeField] private int _damage = 1;
-
         private readonly NetworkVariable<Color> _color =
             new NetworkVariable<Color>(Color.white);
 
         private SpriteRenderer _spriteRenderer;
-        private Vector2 _direction;
-        private ulong _shooterClientId;
-        private float _despawnAt;
+        protected Vector2 _direction;
+        protected ulong _shooterClientId;
+        public ulong ShooterClientId => _shooterClientId;
+        protected float _despawnAt;
+        protected float _speed;
+        protected int _damage;
 
         private void Awake()
         {
@@ -35,10 +34,11 @@ namespace PiGame.Gameplay
             _color.OnValueChanged -= HandleColorChanged;
         }
 
-        public void InitializeServer(
+        public virtual void InitializeServer(
             ulong shooterClientId,
             Vector2 direction,
-            Color color)
+            Color color,
+            ProjectileDefinition definition)
         {
             if (!IsServer)
             {
@@ -46,14 +46,16 @@ namespace PiGame.Gameplay
             }
 
             _shooterClientId = shooterClientId;
+            _speed = definition.Speed;
+            _damage = definition.Damage;
             _direction = direction.sqrMagnitude > 0f
                 ? direction.normalized
                 : Vector2.right;
             _color.Value = color;
-            _despawnAt = Time.time + _lifetimeSeconds;
+            _despawnAt = Time.time + definition.LifetimeSeconds;
         }
 
-        private void Update()
+        protected virtual void Update()
         {
             if (!IsServer || !IsSpawned)
             {
@@ -67,9 +69,14 @@ namespace PiGame.Gameplay
             }
         }
 
-        private void OnTriggerEnter2D(Collider2D other)
+        protected virtual void OnTriggerEnter2D(Collider2D other)
         {
             if (!IsServer || !IsSpawned)
+            {
+                return;
+            }
+
+            if (other.GetComponentInParent<NetworkProjectile>() != null)
             {
                 return;
             }
@@ -78,6 +85,11 @@ namespace PiGame.Gameplay
             if (playerState != null)
             {
                 if (playerState.OwnerClientId == _shooterClientId)
+                {
+                    return;
+                }
+
+                if (playerState.IsInvulnerable)
                 {
                     return;
                 }

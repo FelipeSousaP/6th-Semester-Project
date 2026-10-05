@@ -691,11 +691,11 @@ PlayerSettings:
   captureStartupLogs: {}
   activeInputHandler: 1
   windowsGamepadBackendHint: 0
-  cloudProjectId: 71ef1445-e1f3-4bad-be36-1ec0208ad1bb
+  cloudProjectId: 5b908aac-2a2c-4345-9116-790f17778509
   framebufferDepthMemorylessMode: 0
   qualitySettingsNames: []
-  projectName: 6th-Semester-Project
-  organizationId: felipesemacento
+  projectName: 6th Semester Project
+  organizationId: pi6-senac-2026
   cloudEnabled: 0
   legacyClampBlendShapeWeights: 0
   hmiLoadingImage: {fileID: 0}
