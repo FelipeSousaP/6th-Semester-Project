@@ -31,7 +31,7 @@ namespace PiGame.Gameplay
         {
             _playerState = GetComponent<NetworkPlayerState>();
             _playerMove = GetComponent<PlayerMove>();
-            _characterCombat = GetComponent<ICharacterCombat>();
+            //_characterCombat = GetComponent<ICharacterCombat>(); 
             if (_characterCombat == null || _aimIndicator == null)
             {
                 Debug.LogError("Configure ICharacterCombat e o indicador de mira no prefab do jogador.", this);

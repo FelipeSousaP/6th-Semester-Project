@@ -18,8 +18,8 @@ namespace PiGame.Gameplay
         private readonly NetworkVariable<Color> _indicatorColor =
             new NetworkVariable<Color>(Color.white);
         private readonly NetworkVariable<int> _currentHealth = new NetworkVariable<int>();
-        private readonly NetworkVariable<bool> _isAlive = new NetworkVariable<bool>();
-        private readonly NetworkVariable<bool> _matchActive = new NetworkVariable<bool>();
+        private readonly NetworkVariable<bool> _isAlive = new NetworkVariable<bool>(true);
+        private readonly NetworkVariable<bool> _matchActive = new NetworkVariable<bool>(true);
 
         private SpriteRenderer[] _spriteRenderers;
         private SpriteRenderer _bodySpriteRenderer;
