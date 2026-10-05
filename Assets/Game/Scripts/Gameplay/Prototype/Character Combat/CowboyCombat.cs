@@ -184,6 +184,14 @@ namespace PiGame.Gameplay
             }
         }
 
+        public void ShootReleaseServer()
+        {
+        }
+
+        public void UpdateShootAimServer(Vector2 direction)
+        {
+        }
+
         public void BeginAbilityServer(Vector2 aimDirection, Vector2 moveDirection)
         {
             if (!IsServer || !enabled || !_playerState.CanAct || _isRolling.Value

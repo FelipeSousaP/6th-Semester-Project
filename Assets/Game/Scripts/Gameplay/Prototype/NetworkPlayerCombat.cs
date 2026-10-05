@@ -133,6 +133,7 @@ namespace PiGame.Gameplay
             {
                 _localAimHeld = true;
                 RefreshAimIndicator();
+                UpdateShootAimRpc(_aimDirection);
                 return;
             }
 
@@ -144,6 +145,7 @@ namespace PiGame.Gameplay
             _localAimHeld = false;
             RefreshAimIndicator();
             FireRpc(_aimDirection);
+            ShootReleasedRpc();
         }
 
         public void SetGameplayInputBlocked(bool isBlocked)
@@ -199,6 +201,11 @@ namespace PiGame.Gameplay
 
         private void CancelLocalAim()
         {
+            if (_localAimHeld)
+            {
+                ShootReleasedRpc();
+            }
+
             _localAimHeld = false;
             RefreshAimIndicator();
         }
@@ -212,6 +219,28 @@ namespace PiGame.Gameplay
             }
 
             _characterCombat.ShootServer(direction);
+        }
+
+        [Rpc(SendTo.Server)]
+        private void UpdateShootAimRpc(Vector2 direction, RpcParams rpcParams = default)
+        {
+            if(!_playerState.CanAct || rpcParams.Receive.SenderClientId != OwnerClientId)
+            {
+                return;
+            }
+
+            _characterCombat.UpdateShootAimServer(direction);
+        }
+
+        [Rpc(SendTo.Server)]
+        private void ShootReleasedRpc(RpcParams rpcParams = default)
+        {
+            if (rpcParams.Receive.SenderClientId != OwnerClientId)
+            {
+                return;
+            }
+
+            _characterCombat.ShootReleaseServer();
         }
 
         [Rpc(SendTo.Server)]
